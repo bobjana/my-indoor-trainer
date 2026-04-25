@@ -284,7 +284,7 @@ html, body {
 
 #workout-diagram {
     flex: 1;
-    min-height: 150px;
+    min-height: 50px;
     background-color: var(--bg-surface);
     border-radius: 8px;
     padding: 1rem;
@@ -442,4 +442,35 @@ html, body {
     top: 0.5rem;
     right: 0.5rem;
     border: none;
+}
+
+/* Responsive Overrides */
+
+/* For smaller horizontal screens (e.g., narrow browser or mobile landscape) */
+@media (max-width: 600px) {
+    #hr-metric-display {
+        display: none; /* Hide HR metric to save space */
+    }
+    .metric-display .value {
+        font-size: 3.5rem;
+    }
+    #power-value {
+        font-size: 5rem;
+    }
+}
+
+/* For shorter vertical screens */
+@media (max-height: 600px) {
+    .metric-display .value {
+        font-size: 3rem;
+    }
+    #power-value {
+        font-size: 4.5rem;
+    }
+    .metric-display .label {
+        font-size: 0.9rem;
+    }
+    #workout-screen.active {
+        gap: 0.5rem; /* Reduce gap between elements */
+    }
 }
