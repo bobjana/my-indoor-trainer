@@ -110,6 +110,21 @@ html, body {
     font-weight: bold;
 }
 
+.header {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 0 1rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-muted);
+}
+
+#trainer-name-display {
+    font-weight: bold;
+}
+
 /* Workout Selection */
 #workout-selection-screen {
     padding-top: 3rem;
@@ -148,27 +163,93 @@ html, body {
     display: inline-block;
 }
 
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.button-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    min-width: auto;
+    min-height: auto;
+    margin: 0;
+}
+
+#top-progress-bar {
+    position: relative;
+    width: 100%;
+    height: 30px;
+    background-color: var(--bg-surface-2);
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.5rem;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+#total-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background-color: var(--zone-1); /* Green */
+    opacity: 0.7;
+    transition: width 0.2s linear;
+}
+
+.progress-time {
+    position: relative; /* Ensure text is above the fill */
+    z-index: 1;
+}
+
+.progress-icon {
+    position: relative;
+    z-index: 1;
+    font-size: 2rem; /* Larger icon */
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color 0.2s;
+}
+
+.progress-icon:hover {
+    color: var(--zone-5); /* Red on hover */
+}
+
 /* Workout Screen */
-#workout-screen {
-    display: grid;
-    grid-template-areas:
-        "metrics metrics"
-        "diagram diagram"
-        "progress upcoming";
-    grid-template-rows: auto 1fr auto;
-    grid-template-columns: 1fr auto;
+#workout-screen.active {
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
     height: 100vh;
 }
 
+#metrics-group {
+    background-color: var(--bg-surface);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
 #live-metrics {
-    grid-area: metrics;
+    width: 100%;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    background-color: var(--bg-surface);
     padding: 0.5rem;
-    border-radius: 8px;
+    position: relative; /* For positioning the exit button container */
+}
+
+.exit-button-container {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 10;
 }
 
 .metric-display {
@@ -186,9 +267,7 @@ html, body {
     color: var(--text-muted);
 }
 
-#power-value {
-    font-size: 6rem;
-}
+/* All metrics use the same size now */
 
 #hr-value {
     display: flex;
@@ -204,7 +283,8 @@ html, body {
 }
 
 #workout-diagram {
-    grid-area: diagram;
+    flex: 1;
+    min-height: 150px;
     background-color: var(--bg-surface);
     border-radius: 8px;
     padding: 1rem;
@@ -216,12 +296,17 @@ html, body {
     width: 100%;
     height: 100%;
     display: flex;
+    align-items: flex-end; /* Aligns bars to the bottom */
     position: relative;
 }
 
 .diagram-segment {
-    height: 100%;
-    transition: background-color 0.5s;
+    /* Height will be set dynamically via JS */
+    transition: background-color 0.5s, height 0.3s, opacity 0.5s;
+}
+
+.diagram-segment.completed {
+    opacity: 0.4;
 }
 
 .diagram-cursor {
@@ -234,13 +319,20 @@ html, body {
     transition: transform 0.1s linear;
 }
 
+#workout-bottom-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
 #progress-indicator {
-    grid-area: progress;
+    flex: 1;
     text-align: left;
 }
 
 #upcoming-intervals {
-    grid-area: upcoming;
+    flex: 1;
     text-align: right;
     color: var(--text-muted);
 }
@@ -274,14 +366,12 @@ html, body {
 
 /* Responsive */
 @media (max-width: 768px) {
-    #workout-screen {
-        grid-template-areas:
-            "metrics"
-            "diagram"
-            "progress"
-            "upcoming";
-        grid-template-rows: auto 1fr auto auto;
-        grid-template-columns: 1fr;
+    #workout-screen.active {
+        flex-direction: column;
+    }
+
+    #workout-bottom-info {
+        flex-direction: column;
     }
 
     #live-metrics {

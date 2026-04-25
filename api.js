@@ -25,7 +25,9 @@ class TrainerAPI {
             pauseStartTime: null,
             currentIntervalIndex: 0,
             elapsedSeconds: 0,
-            metricsHistory: []
+            metricsHistory: [],
+            timeWithoutPower: 0,
+            isAutoPaused: false,
         }
 
         this._events = {}
@@ -38,6 +40,10 @@ class TrainerAPI {
             this._emit('stravaStatus', connected)
         }
         this.strava.onLog = (msg, type) => this._emit('log', { msg, type })
+
+        if (this.useStub) {
+            this.ftms.onWorkoutUpdate = (progress) => this._handleStubProgress(progress)
+        }
     }
 
     on(event, cb) {
@@ -152,9 +158,13 @@ class TrainerAPI {
 
         const firstInterval = workout.intervals[0]
         const targetPower = Math.round(workout.ftp * firstInterval.percentage / 100)
-        await this.ftms.setTargetPower(targetPower)
-
-        this._timerInterval = setInterval(() => this._tick(), 100)
+        
+        if (this.useStub) {
+            this.ftms.startWorkout(workout);
+        } else {
+            await this.ftms.setTargetPower(targetPower)
+            this._timerInterval = setInterval(() => this._tick(), 100)
+        }
 
         this._emit('workoutstart', workout)
         this._emit('intervalchange', {
@@ -182,12 +192,30 @@ class TrainerAPI {
         this._emit('workoutresume')
     }
 
-    stopWorkout() {
-        clearInterval(this._timerInterval)
-        this._timerInterval = null
+    autoPauseWorkout() {
+        if (this.state.paused || !this.state.activeWorkout) return;
+        this.state.isAutoPaused = true;
+        this.pauseWorkout();
+        this._emit('autopause');
+    }
 
-        const summary = this._calculateSummary()
-        this.workoutManager.saveLastWorkoutSummary(summary)
+    autoResumeWorkout() {
+        if (!this.state.isAutoPaused || !this.state.activeWorkout) return;
+        this.resumeWorkout();
+        this.state.isAutoPaused = false;
+        this._emit('autoresume');
+    }
+
+    stopWorkout() {
+        if (this.useStub) {
+            this.ftms.stopWorkout();
+        } else {
+            clearInterval(this._timerInterval);
+            this._timerInterval = null;
+        }
+
+        const summary = this._calculateSummary();
+        this.workoutManager.saveLastWorkoutSummary(summary);
 
         this.state.phase = 'summary'
         this._emit('workoutstop', summary)
@@ -234,20 +262,77 @@ class TrainerAPI {
         }
     }
 
+    _handleStubProgress(progress) {
+        if (!this.state.activeWorkout || !progress) return;
+
+        // Update elapsed time from server
+        const totalDuration = this.workoutManager.getTotalDuration(this.state.activeWorkout);
+        this.state.elapsedSeconds = (progress.percentageComplete / 100) * totalDuration;
+
+        // Check for interval changes
+        if (progress.currentIntervalIndex !== this.state.currentIntervalIndex) {
+            this.state.currentIntervalIndex = progress.currentIntervalIndex;
+            const interval = this.state.activeWorkout.intervals[progress.currentIntervalIndex];
+            if (interval) {
+                const targetPower = Math.round(this.state.activeWorkout.ftp * interval.percentage / 100);
+                
+                this._emit('intervalchange', {
+                    index: progress.currentIntervalIndex,
+                    interval,
+                    targetPower
+                });
+            }
+        }
+
+        // Check for workout completion
+        if (progress.percentageComplete >= 100) {
+            this.stopWorkout();
+        }
+    }
+
     _handleMetrics(metrics) {
-        this._emit('metrics', metrics)
+        this._emit('metrics', metrics);
+
+        const now = Date.now();
+        const lastMetricsTime = this.state.metricsHistory.length > 0 ? this.state.metricsHistory[this.state.metricsHistory.length - 1].timestamp : now;
+        const timeDelta = (now - lastMetricsTime) / 1000;
+
+        if (this.state.activeWorkout) { // Run auto-pause logic for both real and stub trainers
+            const isPowerPresent = metrics.power >= 10;
+
+            if (isPowerPresent) {
+                // Power is present
+                if (this.state.isAutoPaused) {
+                    if (this.timeWithPower === undefined) this.timeWithPower = 0;
+                    this.timeWithPower += timeDelta;
+                    if (this.timeWithPower >= 3) {
+                        this.autoResumeWorkout();
+                    }
+                }
+                this.state.timeWithoutPower = 0;
+            } else {
+                // Power is zero or negligible
+                if (!this.state.paused) {
+                    this.state.timeWithoutPower += timeDelta;
+                    if (this.state.timeWithoutPower >= 5) {
+                        this.autoPauseWorkout();
+                    }
+                }
+                this.timeWithPower = 0; // Reset counter if power drops
+            }
+        }
 
         if (this.state.activeWorkout) {
             this.state.metricsHistory.push({
-                timestamp: Date.now(),
+                timestamp: now,
                 power: metrics.power,
                 hr: metrics.hr,
                 cadence: metrics.cadence,
                 targetPower: metrics.targetPower,
                 intervalIndex: this.state.currentIntervalIndex
-            })
+            });
             if (this.state.metricsHistory.length > 10000) {
-                this.state.metricsHistory = this.state.metricsHistory.slice(-10000)
+                this.state.metricsHistory.shift();
             }
         }
     }

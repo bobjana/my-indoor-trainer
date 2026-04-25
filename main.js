@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const success = await api.connectTrainer();
         if (success) {
             $('#trainer-status').textContent = `Connected: ${api.ftms.device.name}`;
+            $('#trainer-name-display').textContent = api.ftms.device.name;
             $('#connect-hr-btn').style.display = 'block';
             showScreen('selection');
             renderWorkoutList();
@@ -83,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const success = await api.connectTrainer();
         if (success) {
             $('#trainer-status').textContent = `Connected: ${api.ftms.device.name}`;
+            $('#trainer-name-display').textContent = api.ftms.device.name;
             showScreen('selection');
             renderWorkoutList();
         } else {
@@ -90,9 +92,61 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    $('#disconnect-btn').addEventListener('click', () => {
+        api.disconnectTrainer();
+        $('#trainer-status').textContent = 'Not connected';
+        $('#hr-status').textContent = '';
+        $('#connection-error-text').textContent = '';
+        showScreen('connect');
+    });
+
     $('#connect-hr-btn').addEventListener('click', async () => {
         await api.connectHR();
         $('#hr-status').textContent = `Connected: ${api.ftms.hrmDevice.name}`;
+    });
+
+    $('#import-workout-input').addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        const importStatusEl = $('#import-status');
+        importStatusEl.textContent = 'Importing...';
+        importStatusEl.style.color = 'var(--text-muted)';
+
+        reader.onload = async (e) => {
+            try {
+                const workout = JSON.parse(e.target.result);
+                const result = await api.createWorkout(workout);
+
+                if (result.success) {
+                    importStatusEl.textContent = 'Import successful!';
+                    importStatusEl.style.color = 'var(--accent-color)';
+                    renderWorkoutList(); // Refresh the list
+                } else {
+                    const errorMsg = result.errors.join(', ');
+                    importStatusEl.textContent = `Error: ${errorMsg}`;
+                    importStatusEl.style.color = 'var(--error-color, #ef4444)';
+                }
+            } catch (err) {
+                importStatusEl.textContent = 'Error: Invalid JSON file.';
+                importStatusEl.style.color = 'var(--error-color, #ef4444)';
+                console.error('Failed to parse workout JSON:', err);
+            } finally {
+                // Clear the file input to allow re-importing the same file
+                event.target.value = '';
+                // Clear the status message after a few seconds
+                setTimeout(() => { importStatusEl.textContent = ''; }, 5000);
+            }
+        };
+
+        reader.onerror = () => {
+            importStatusEl.textContent = 'Error reading file.';
+            importStatusEl.style.color = 'var(--error-color, #ef4444)';
+            event.target.value = '';
+        };
+
+        reader.readAsText(file);
     });
 
     // Workout Selection Logic
@@ -145,8 +199,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const powerPercent = iv.percentage;
             const zone = PowerZones.getZone(workout.ftp * (powerPercent / 100), workout.ftp);
             const color = PowerZones.getZoneColor(zone);
-            return `<div class="diagram-segment" style="width: ${percentage}%; background-color: ${color};"></div>`;
+            // Use height to represent power level
+            const height = Math.min(100, iv.percentage * 0.85);
+            return `<div class="diagram-segment" style="width: ${percentage}%; height: ${height}%; background-color: ${color};"></div>`;
         }).join('');
+    }
+
+    function updateDiagram(progressPercentage) {
+        const segments = document.querySelectorAll('.diagram-segment');
+        let cumulativePercentage = 0;
+        segments.forEach(segment => {
+            const segmentWidth = parseFloat(segment.style.width);
+            if (cumulativePercentage + (segmentWidth / 2) < progressPercentage) {
+                segment.classList.add('completed');
+            } else {
+                segment.classList.remove('completed');
+            }
+            cumulativePercentage += segmentWidth;
+        });
     }
 
     // Summary Screen Logic
@@ -155,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderWorkoutList();
     });
 
-    $('#stop-workout-btn').addEventListener('click', () => {
+    $('#exit-workout-btn').addEventListener('click', () => {
         if (api.state.activeWorkout) {
             const confirmed = window.confirm("Are you sure you want to stop the current workout?");
             if (confirmed) {
@@ -185,6 +255,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // API Event Handlers
+    api.on('autopause', () => {
+        $('#autopause-modal').style.display = 'flex';
+    });
+
+    api.on('autoresume', () => {
+        $('#autopause-modal').style.display = 'none';
+    });
+
     api.on('connectionfailed', (data) => {
         const { device, error } = data;
         const message = getErrorMessage(error);
@@ -197,11 +275,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     api.on('metrics', (m) => {
-        $('#power-value').textContent = m.power;
-        $('#cadence-value').textContent = m.cadence;
-        $('#hr-value').childNodes[0].nodeValue = m.hr + ' ';
-        const hrZone = HRZones.getZone(m.hr);
-        $('.hr-zone-badge').style.backgroundColor = HRZones.getZoneColor(hrZone);
+        $('#power-value').textContent = m.power >= 10 ? m.power : '--';
+        $('#cadence-value').textContent = m.cadence > 0 ? m.cadence : '--';
+        $('#hr-value').childNodes[0].nodeValue = m.hr > 0 ? `${m.hr} ` : '-- ';
     });
 
     api.on('workoutstart', (w) => {
@@ -211,8 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     api.on('intervalchange', (data) => {
         const { interval, targetPower } = data;
-        $('#target-power-value').textContent = targetPower;
-        $('#interval-name').textContent = interval.name;
+        $('#interval-name').textContent = `${interval.name} - ${targetPower} W`;
     });
     
     api.on('workoutstop', (summary) => {
@@ -235,10 +310,22 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         if (api.state.activeWorkout) {
             const progress = api.getWorkoutProgress();
-            $('.diagram-cursor').style.transform = `translateX(${progress.percentage / 100 * $('.diagram-bar').offsetWidth}px)`;
+            const progressPercentage = progress.percentage;
+            
+            // Move cursor
+            $('.diagram-cursor').style.transform = `translateX(${progressPercentage / 100 * $('.diagram-bar').offsetWidth}px)`;
 
-            const intervalTimeRemaining = progress.currentInterval.duration - progress.timeInInterval;
+            // Update time display
             $('#interval-time').textContent = `${formatTime(progress.timeInInterval)} / ${formatTime(progress.currentInterval.duration)}`;
+
+            // Update completed segments
+            updateDiagram(progressPercentage);
+
+            // Update top progress bar
+            $('#total-progress-fill').style.width = `${progressPercentage}%`;
+            $('#time-spent-display').textContent = formatTime(progress.elapsed);
+            const timeRemaining = progress.total - progress.elapsed;
+            $('#time-remaining-display').textContent = `-${formatTime(timeRemaining)}`;
         }
     }, 500);
 
@@ -246,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
     api.tryReconnect().then(connected => {
         if (connected) {
             $('#trainer-status').textContent = `Connected: ${api.ftms.device.name}`;
+            $('#trainer-name-display').textContent = api.ftms.device.name;
             $('#connect-hr-btn').style.display = 'block';
             showScreen('selection');
             renderWorkoutList();

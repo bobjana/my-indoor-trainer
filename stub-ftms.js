@@ -5,6 +5,7 @@ export class StubFTMSController {
         this.device = { id: 'STUB-TRAINER', name: 'Stub Trainer' };
         this.metrics = { power: 0, hr: 0, cadence: 0, timestamp: Date.now() };
         this.onMetricsUpdate = null;
+        this.onWorkoutUpdate = null;
         this.onLog = null;
     }
 
@@ -34,6 +35,10 @@ export class StubFTMSController {
                         this.metrics = msg.data;
                         if (this.onMetricsUpdate) {
                             this.onMetricsUpdate(this.metrics);
+                        }
+                        // Also handle workout progress if it's included
+                        if (msg.progress && this.onWorkoutUpdate) {
+                            this.onWorkoutUpdate(msg.progress);
                         }
                     }
                 } catch (e) {
@@ -66,6 +71,22 @@ export class StubFTMSController {
             return true;
         }
         return false;
+    }
+
+    startWorkout(workout) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const msg = { type: 'startWorkout', data: workout };
+            this.ws.send(JSON.stringify(msg));
+            this.log(`Sent startWorkout for "${workout.name}"`, 'info');
+        }
+    }
+
+    stopWorkout() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const msg = { type: 'stopWorkout' };
+            this.ws.send(JSON.stringify(msg));
+            this.log('Sent stopWorkout', 'info');
+        }
     }
 
     disconnect() {

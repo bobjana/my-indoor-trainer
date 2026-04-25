@@ -48,14 +48,32 @@
         </div>
     </div>
 
+    <!-- Auto-pause Modal -->
+    <div id="autopause-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Workout Paused</h2>
+            <p>No power detected from the trainer. The workout has been automatically paused.</p>
+            <p>Resume pedaling to continue.</p>
+        </div>
+    </div>
+
     <!-- Screen 2: Workout Selection -->
     <div id="workout-selection-screen" class="screen">
+        <div class="header">
+            <span id="trainer-name-display"></span>
+            <button id="disconnect-btn" class="button-icon" title="Disconnect Trainer">&times;</button>
+        </div>
         <div class="workout-list">
             <div id="todays-workout-card" style="display:none;">
                 <h2>Today's Workout</h2>
                 <div id="todays-workout-details"></div>
             </div>
-            <h2>Workout Library</h2>
+            <div class="list-header">
+                <h2>Workout Library</h2>
+                <label for="import-workout-input" class="button button-secondary button-small">Import</label>
+                <input type="file" id="import-workout-input" accept=".json,application/json" style="display: none;" />
+            </div>
+            <p id="import-status" class="status-text" style="text-align: right; margin-top: -0.5rem; margin-bottom: 1rem;"></p>
             <div id="workout-library">
                 <p>No workouts found. Create one with the agent API.</p>
             </div>
@@ -64,35 +82,42 @@
 
     <!-- Screen 3: Workout -->
     <div id="workout-screen" class="screen">
-        <div id="live-metrics">
-            <div class="metric-display">
-                <div id="power-value" class="value" aria-live="polite">0</div>
-                <div class="label">Power (W)</div>
+        <div id="metrics-group">
+            <div id="live-metrics">
+                <div class="metric-display">
+                    <div id="power-value" class="value" aria-live="polite">0</div>
+                    <div class="label">Power (W)</div>
+                </div>
+                <div class="metric-display">
+                    <div id="cadence-value" class="value" aria-live="polite">0</div>
+                    <div class="label">Cadence (RPM)</div>
+                </div>
+                <div class="metric-display">
+                    <div id="hr-value" class="value" aria-live="polite">0</div>
+                    <div class="label">Heart Rate</div>
+                </div>
             </div>
-            <div class="metric-display">
-                <div id="cadence-value" class="value" aria-live="polite">0</div>
-                <div class="label">Cadence (RPM)</div>
+            <div id="top-progress-bar">
+                <div id="total-progress-fill"></div>
+                <span id="time-spent-display" class="progress-time">0:00</span>
+                <span id="time-remaining-display" class="progress-time">0:00</span>
             </div>
-            <div class="metric-display">
-                <div id="hr-value" class="value" aria-live="polite">0 <span class="hr-zone-badge"></span></div>
-                <div class="label">Heart Rate</div>
-            </div>
-            <div class="metric-display">
-                <div id="target-power-value" class="value" style="color: var(--accent-color);">0</div>
-                <div class="label">Target (W)</div>
-            </div>
+        </div>
+        <div class="exit-button-container">
+            <span id="exit-workout-btn" class="progress-icon" title="Stop Workout">&#x23FB;</span>
         </div>
         <div id="workout-diagram">
             <div class="diagram-bar"></div>
             <div class="diagram-cursor"></div>
         </div>
-        <div id="progress-indicator">
-            <div id="interval-name">Warmup</div>
-            <div id="interval-time">0:00 / 5:00</div>
-        </div>
-        <button id="stop-workout-btn" class="button button-secondary" style="margin-top: 1rem;">Stop Workout</button>
-        <div id="upcoming-intervals">
-            <!-- Upcoming intervals here -->
+        <div id="workout-bottom-info">
+            <div id="progress-indicator">
+                <div id="interval-name">Warmup</div>
+                <div id="interval-time">0:00 / 5:00</div>
+            </div>
+            <div id="upcoming-intervals">
+                <!-- Upcoming intervals here -->
+            </div>
         </div>
     </div>
 
