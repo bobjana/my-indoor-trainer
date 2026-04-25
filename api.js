@@ -1,10 +1,13 @@
 import { FTMSController } from './ftms.js';
+import { StubFTMSController } from './stub-ftms.js';
 import { WorkoutManager } from './workout-manager.js';
 import { StravaIntegration } from './strava.js';
 
 class TrainerAPI {
     constructor() {
-        this.ftms = new FTMSController()
+        const useStub = new URLSearchParams(window.location.search).get('stub') === 'true';
+        this.ftms = useStub ? new StubFTMSController() : new FTMSController();
+
         this.workoutManager = new WorkoutManager()
         this.strava = new StravaIntegration()
 
