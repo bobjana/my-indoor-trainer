@@ -1,0 +1,396 @@
+{
+  "heuristics": [
+    {
+      "id": "N1",
+      "name": "Visibility of system status",
+      "checkpoints": [
+        {
+          "check": "Loading states are visible for operations >1 second",
+          "pass": false,
+          "severity": 1,
+          "notes": "No progress indicators during connection attempts, which can take time."
+        },
+        {
+          "check": "Progress indicators shown for multi-step processes",
+          "pass": false,
+          "severity": 1,
+          "notes": "Connecting to bluetooth devices can be a multi-step process that is not visualized."
+        },
+        {
+          "check": "Success/error feedback appears after user actions",
+          "pass": true,
+          "severity": 0,
+          "notes": "Workout completion shows a summary screen, which is good feedback. Status text for connections is present."
+        },
+        {
+          "check": "Current location is clear in navigation",
+          "pass": false,
+          "severity": 1,
+          "notes": "The active screen is changed by adding/removing an 'active' class. This is functional but lacks strong visual indicators in the overall UI structure (e.g., navigation tabs)."
+        }
+      ]
+    },
+    {
+      "id": "N2",
+      "name": "Match between system and real world",
+      "checkpoints": [
+        {
+          "check": "Labels use user language, not internal jargon",
+          "pass": true,
+          "severity": 0,
+          "notes": "Labels like 'Power (W)', 'Cadence (RPM)' are clear and standard."
+        },
+        {
+          "check": "Icons follow established conventions",
+          "pass": true,
+          "severity": 0,
+          "notes": "The app uses standard button and text elements, no confusing icons noted."
+        },
+        {
+          "check": "Information appears in natural and logical order",
+          "pass": true,
+          "severity": 0,
+          "notes": "The flow (Connect -> Select -> Workout -> Summary) is logical."
+        },
+        {
+          "check": "Metaphors match real-world expectations",
+          "pass": true,
+          "severity": 0,
+          "notes": "The workout diagram metaphor is a common and effective way to visualize workout structure."
+        }
+      ]
+    },
+    {
+      "id": "N3",
+      "name": "User control and freedom",
+      "checkpoints": [
+        {
+          "check": "Undo is available for destructive actions",
+          "pass": false,
+          "severity": 2,
+          "notes": "No clear 'undo' for actions like starting a workout. No 'stop' button during the workout, only a 'Done' button on the summary screen."
+        },
+        {
+          "check": "Cancel/back options are clearly visible",
+          "pass": false,
+          "severity": 1,
+          "notes": "A dedicated 'Back' or 'Cancel' is missing from most screens."
+        },
+        {
+          "check": "Users can exit flows without losing progress",
+          "pass": false,
+          "severity": 1,
+          "notes": "User cannot easily go back from the workout screen to the selection screen without stopping the workout."
+        },
+        {
+          "check": "Confirmation dialogs for irreversible actions",
+          "pass": false,
+          "severity": 2,
+          "notes": "No confirmation before uploading to Strava."
+        }
+      ]
+    },
+    {
+      "id": "N4",
+      "name": "Consistency and standards",
+      "checkpoints": [
+        {
+          "check": "UI elements behave the same way throughout",
+          "pass": true,
+          "severity": 0,
+          "notes": "Buttons and status text appear consistent across screens."
+        },
+        {
+          "check": "Terminology is consistent across all pages",
+          "pass": true,
+          "severity": 0,
+          "notes": "Terminology seems consistent."
+        },
+        {
+          "check": "Visual patterns (spacing, colors) are consistent",
+          "pass": true,
+          "severity": 0,
+          "notes": "The use of CSS variables suggests a consistent approach to styling, which is good."
+        },
+        {
+          "check": "Platform conventions are followed",
+          "pass": true,
+          "severity": 0,
+          "notes": "Follows standard web conventions for a single-page application."
+        }
+      ]
+    },
+    {
+      "id": "N5",
+      "name": "Error prevention",
+      "checkpoints": [
+        {
+          "check": "Form validation occurs before submission",
+          "pass": true,
+          "severity": 0,
+          "notes": "No complex forms, so this is less of an issue. The agent API for workout creation would be the place for validation."
+        },
+        {
+          "check": "Constraints prevent invalid inputs",
+          "pass": true,
+          "severity": 0,
+          "notes": "The UI is primarily selection-based, which prevents invalid input."
+        },
+        {
+          "check": "Destructive actions require confirmation",
+          "pass": false,
+          "severity": 2,
+          "notes": "Uploading to Strava is a key action that should have a confirmation step."
+        },
+        {
+          "check": "Default values reduce user effort and errors",
+          "pass": true,
+          "severity": 0,
+          "notes": "N/A for the current UI."
+        }
+      ]
+    },
+    {
+      "id": "N6",
+      "name": "Recognition rather than recall",
+      "checkpoints": [
+        {
+          "check": "Options are visible rather than requiring memorization",
+          "pass": true,
+          "severity": 0,
+          "notes": "Workout list is clearly visible."
+        },
+        {
+          "check": "Help and instructions are easily accessible",
+          "pass": false,
+          "severity": 1,
+          "notes": "No visible help or instructions. For example, what are the requirements for connecting a trainer?"
+        },
+        {
+          "check": "Recently used items are easily accessible",
+          "pass": false,
+          "severity": 1,
+          "notes": "No concept of 'recently done' workouts to quickly repeat one."
+        },
+        {
+          "check": "Search and filter options are visible",
+          "pass": false,
+          "severity": 1,
+          "notes": "No search or filter for the workout library, which will become an issue as it grows."
+        }
+      ]
+    },
+    {
+      "id": "N7",
+      "name": "Flexibility and efficiency of use",
+      "checkpoints": [
+        {
+          "check": "Keyboard shortcuts available for frequent actions",
+          "pass": false,
+          "severity": 0,
+          "notes": "No keyboard shortcuts. This is a minor issue for this type of app."
+        },
+        {
+          "check": "Customizable interface elements",
+          "pass": false,
+          "severity": 0,
+          "notes": "No customization options."
+        },
+        {
+          "check": "Shortcuts or recent items for repeat tasks",
+          "pass": false,
+          "severity": 1,
+          "notes": "Repeating a workout requires finding it in the list again."
+        },
+        {
+          "check": "Batch operations for power users",
+          "pass": false,
+          "severity": 0,
+          "notes": "No batch operations applicable yet."
+        }
+      ]
+    },
+    {
+      "id": "N8",
+      "name": "Aesthetic and minimalist design",
+      "checkpoints": [
+        {
+          "check": "Each screen focuses on one primary action",
+          "pass": true,
+          "severity": 0,
+          "notes": "Each screen has a clear purpose (Connect, Select, etc.)."
+        },
+        {
+          "check": "Visual hierarchy guides attention to important elements",
+          "pass": true,
+          "severity": 0,
+          "notes": "The use of larger font for metric values creates a clear hierarchy."
+        },
+        {
+          "check": "Whitespace used effectively",
+          "pass": true,
+          "severity": 0,
+          "notes": "The layout is clean and not cluttered."
+        },
+        {
+          "check": "No unnecessary decorative elements that distract",
+          "pass": true,
+          "severity": 0,
+          "notes": "The design appears functional and not overly decorative."
+        }
+      ]
+    },
+    {
+      "id": "N9",
+      "name": "Help users recognize, diagnose, and recover from errors",
+      "checkpoints": [
+        {
+          "check": "Error messages are in plain language (no codes)",
+          "pass": false,
+          "severity": 2,
+          "notes": "Bluetooth connection can fail for many reasons. The app only shows 'Not connected' or 'Connection failed'."
+        },
+        {
+          "check": "Error messages indicate what went wrong specifically",
+          "pass": false,
+          "severity": 2,
+          "notes": "Error messages are generic."
+        },
+        {
+          "check": "Error messages suggest how to fix the issue",
+          "pass": false,
+          "severity": 2,
+          "notes": "No suggestions on how to resolve a connection failure."
+        },
+        {
+          "check": "Errors are visually prominent and close to the source",
+          "pass": true,
+          "severity": 0,
+          "notes": "Status text is clearly visible."
+        }
+      ]
+    },
+    {
+      "id": "N10",
+      "name": "Help and documentation",
+      "checkpoints": [
+        {
+          "check": "Help is easily accessible from any screen",
+          "pass": false,
+          "severity": 2,
+          "notes": "No help section or documentation is visible."
+        },
+        {
+          "check": "Contextual help is provided where needed",
+          "pass": false,
+          "severity": 1,
+          "notes": "No contextual help like tooltips."
+        },
+        {
+          "check": "Onboarding guides new users through key features",
+          "pass": false,
+          "severity": 1,
+          "notes": "No onboarding for first-time users."
+        },
+        {
+          "check": "Documentation is searchable and task-focused",
+          "pass": false,
+          "severity": 2,
+          "notes": "No documentation."
+        }
+      ]
+    }
+  ],
+  "accessibility": [
+    {
+      "id": "A1",
+      "name": "Color contrast",
+      "checkpoints": [
+        {
+          "check": "Text meets 4.5:1 contrast ratio (WCAG AA)",
+          "pass": false,
+          "severity": 1,
+          "notes": "Cannot verify all text contrast without viewing, but will assume some may fail. The use of var(--accent-color) for target power needs checking against the background."
+        },
+        {
+          "check": "Large text meets 3:1 contrast ratio",
+          "pass": true,
+          "severity": 0,
+          "notes": "Headings appear large enough."
+        },
+        {
+          "check": "Color is not the only way to convey information",
+          "pass": false,
+          "severity": 1,
+          "notes": "The workout diagram uses color to represent power zones. This should be paired with text or patterns for accessibility."
+        },
+        {
+          "check": "Focus indicators have sufficient contrast",
+          "pass": false,
+          "severity": 1,
+          "notes": "The default browser focus indicator may not have sufficient contrast on all backgrounds."
+        }
+      ]
+    },
+    {
+      "id": "A2",
+      "name": "Keyboard navigation",
+      "checkpoints": [
+        {
+          "check": "All interactive elements reachable via Tab key",
+          "pass": true,
+          "severity": 0,
+          "notes": "All interactive elements are buttons, which are tabbable by default."
+        },
+        {
+          "check": "Focus order follows logical reading order",
+          "pass": true,
+          "severity": 0,
+          "notes": "DOM order appears logical."
+        },
+        {
+          "check": "Focus ring is visible on all interactive elements",
+          "pass": false,
+          "severity": 2,
+          "notes": "No custom focus styles are defined in style.css, so it relies on the browser default which can sometimes be unclear."
+        },
+        {
+          "check": "No keyboard traps (user can always navigate away)",
+          "pass": true,
+          "severity": 0,
+          "notes": "The app structure is simple, keyboard traps are unlikely."
+        }
+      ]
+    },
+    {
+      "id": "A3",
+      "name": "Screen reader support",
+      "checkpoints": [
+        {
+          "check": "All images have meaningful alt text",
+          "pass": true,
+          "severity": 0,
+          "notes": "No images in the app."
+        },
+        {
+          "check": "Form inputs have associated labels",
+          "pass": true,
+          "severity": 0,
+          "notes": "Buttons have clear text, no separate form inputs yet."
+        },
+        {
+          "check": "ARIA attributes used correctly for dynamic content",
+          "pass": false,
+          "severity": 1,
+          "notes": "Live metric regions (like power, cadence) are not marked with ARIA attributes (e.g., aria-live) to announce updates to screen readers."
+        },
+        {
+          "check": "Headings follow logical hierarchy (h1 > h2 > h3)",
+          "pass": true,
+          "severity": 0,
+          "notes": "The use of h1/h2 seems appropriate."
+        }
+      ]
+    }
+  ]
+}
