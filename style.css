@@ -68,6 +68,14 @@ html, body {
     transition: background-color 0.2s, transform 0.1s;
 }
 
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
 .button:hover {
     background-color: #a76ff0;
 }

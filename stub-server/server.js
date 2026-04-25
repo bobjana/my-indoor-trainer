@@ -3,7 +3,18 @@ const readline = require('readline');
 
 const wss = new WebSocketServer({ port: 8080 });
 
-console.log('Stub Trainer WebSocket server started on port 8080');
+wss.on('listening', () => {
+    console.log('Stub Trainer WebSocket server started on port 8080');
+});
+
+wss.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+        console.error('Error: Port 8080 is already in use. Is another stub server running?');
+    } else {
+        console.error('WebSocket server error:', error);
+    }
+    process.exit(1);
+});
 
 
 // Trainer State

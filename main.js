@@ -62,7 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Connect Screen Logic
     $('#connect-trainer-btn').addEventListener('click', async () => {
-        $('#connection-error-text').textContent = ''; // Clear previous errors
+        api.setStubMode(false); // Ensure real mode
+        $('#connection-error-text').textContent = '';
         $('#trainer-status').textContent = 'Connecting...';
         const success = await api.connectTrainer();
         if (success) {
@@ -72,6 +73,20 @@ document.addEventListener('DOMContentLoaded', () => {
             renderWorkoutList();
         } else {
             $('#trainer-status').textContent = 'Connection Failed';
+        }
+    });
+
+    $('#use-stub-btn').addEventListener('click', async () => {
+        api.setStubMode(true);
+        $('#connection-error-text').textContent = '';
+        $('#trainer-status').textContent = 'Connecting to Stub...';
+        const success = await api.connectTrainer();
+        if (success) {
+            $('#trainer-status').textContent = `Connected: ${api.ftms.device.name}`;
+            showScreen('selection');
+            renderWorkoutList();
+        } else {
+            $('#trainer-status').textContent = 'Stub Connection Failed';
         }
     });
 

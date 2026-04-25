@@ -17,8 +17,10 @@ export class StubFTMSController {
 
     async connect() {
         return new Promise((resolve) => {
-            this.log('Connecting to stub server at ws://localhost:8080...', 'info');
-            this.ws = new WebSocket('ws://localhost:8080');
+            const host = window.location.hostname || '127.0.0.1';
+            const url = `ws://${host}:8080`;
+            this.log(`Connecting to stub server at ${url}...`, 'info');
+            this.ws = new WebSocket(url);
 
             this.ws.onopen = () => {
                 this.log('Connected to stub server', 'success');

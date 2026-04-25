@@ -13,7 +13,10 @@
         <div>
             <h1>My Indoor Trainer</h1>
             <button id="help-btn" class="button-icon">?</button>
-            <button id="connect-trainer-btn" class="button">Connect Trainer</button>
+            <div class="button-group">
+                <button id="connect-trainer-btn" class="button">Connect Trainer</button>
+                <button id="use-stub-btn" class="button button-secondary">Use Stub Trainer</button>
+            </div>
             <p id="trainer-status" class="status-text">Not connected</p>
             <p id="connection-error-text" class="status-text error-text"></p>
             <button id="connect-hr-btn" class="button button-secondary" style="display: none;">Connect HR Monitor</button>
@@ -34,6 +37,14 @@
                 <li><strong>Select Device:</strong> A list of nearby devices will appear. Select your trainer from the list to connect.</li>
             </ol>
             <p><strong>Troubleshooting:</strong> If you don't see your device, try turning it off and on again, or moving closer to your computer.</p>
+            <hr>
+            <h3>Developer / Stub Mode</h3>
+            <p>If you don't have a real trainer nearby, you can use the built-in stub server:</p>
+            <ol>
+                <li>Open a terminal in the <code>/stub-server</code> directory.</li>
+                <li>Run <code>npm install</code> then <code>npm start</code>.</li>
+                <li>Click the <strong>"Use Stub Trainer"</strong> button on the connect screen.</li>
+            </ol>
         </div>
     </div>
 

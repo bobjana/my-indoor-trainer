@@ -5,8 +5,8 @@ import { StravaIntegration } from './strava.js';
 
 class TrainerAPI {
     constructor() {
-        const useStub = new URLSearchParams(window.location.search).get('stub') === 'true';
-        this.ftms = useStub ? new StubFTMSController() : new FTMSController();
+        this.useStub = new URLSearchParams(window.location.search).get('stub') === 'true';
+        this.ftms = this.useStub ? new StubFTMSController() : new FTMSController();
 
         this.workoutManager = new WorkoutManager()
         this.strava = new StravaIntegration()
@@ -57,6 +57,18 @@ class TrainerAPI {
         for (const cb of this._events[event]) {
             cb(data)
         }
+    }
+
+    setStubMode(enabled) {
+        if (this.state.connected) {
+            this.disconnectTrainer();
+        }
+        this.useStub = enabled;
+        this.ftms = enabled ? new StubFTMSController() : new FTMSController();
+        
+        // Re-attach handlers
+        this.ftms.onMetricsUpdate = (metrics) => this._handleMetrics(metrics)
+        this.ftms.onLog = (msg, type) => this._emit('log', { msg, type })
     }
 
     async connectTrainer() {
