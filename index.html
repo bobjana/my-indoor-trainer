@@ -10,17 +10,17 @@
 
     <!-- Screen 1: Connect -->
     <div id="connect-screen" class="screen active center-screen">
-        <div>
-            <h1>My Indoor Trainer</h1>
-            <button id="help-btn" class="button-icon">?</button>
+        <div class="glass-panel" style="padding: 4rem; border-radius: 32px;">
+            <h1>Indoor Trainer</h1>
             <div class="button-group">
                 <button id="connect-trainer-btn" class="button">Connect Trainer</button>
                 <button id="use-stub-btn" class="button button-secondary">Use Stub Trainer</button>
             </div>
             <p id="trainer-status" class="status-text">Not connected</p>
             <p id="connection-error-text" class="status-text error-text"></p>
-            <button id="connect-hr-btn" class="button button-secondary" style="display: none;">Connect HR Monitor</button>
+            <button id="connect-hr-btn" class="button button-secondary" style="display: none; margin: 1rem auto;">Connect HR Monitor</button>
             <p id="hr-status" class="status-text"></p>
+            <button id="help-btn" class="button-secondary" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; min-width: auto; margin-top: 2rem;">?</button>
         </div>
     </div>
 
@@ -84,33 +84,37 @@
     <div id="workout-screen" class="screen">
         <div id="metrics-group">
             <div id="live-metrics">
-                <div class="metric-display">
+                <div class="metric-display glass-panel">
                     <div id="power-value" class="value" aria-live="polite">0</div>
                     <div class="label">Power (W)</div>
                 </div>
-                <div class="metric-display">
+                <div class="metric-display glass-panel">
                     <div id="cadence-value" class="value" aria-live="polite">0</div>
                     <div class="label">Cadence (RPM)</div>
                 </div>
-                <div id="hr-metric-display" class="metric-display">
+                <div id="hr-metric-display" class="metric-display glass-panel">
                     <div id="hr-value" class="value" aria-live="polite">0</div>
                     <div class="label">Heart Rate</div>
                 </div>
             </div>
+            
             <div id="top-progress-bar">
                 <div id="total-progress-fill"></div>
-                <span id="time-spent-display" class="progress-time">0:00</span>
-                <span id="time-remaining-display" class="progress-time">0:00</span>
+            </div>
+            <div class="progress-labels">
+                <span id="time-spent-display">0:00</span>
+                <span id="time-remaining-display">0:00</span>
             </div>
         </div>
-        <div class="exit-button-container">
-            <span id="exit-workout-btn" class="progress-icon" title="Stop Workout">&#x23FB;</span>
-        </div>
+
         <div id="workout-diagram">
-            <div class="diagram-bar"></div>
-            <div class="diagram-cursor"></div>
+            <div class="diagram-background-panel"></div>
+            <div class="diagram-bar">
+                <div class="diagram-cursor"></div>
+            </div>
         </div>
-        <div id="workout-bottom-info">
+
+        <div id="workout-bottom-info" class="glass-panel">
             <div id="progress-indicator">
                 <div id="interval-name">Warmup</div>
                 <div id="interval-time">0:00 / 5:00</div>
@@ -119,6 +123,10 @@
                 <!-- Upcoming intervals here -->
             </div>
         </div>
+
+        <div class="exit-button-container">
+            <span id="exit-workout-btn" title="Stop Workout">&times;</span>
+        </div>
     </div>
 
     <!-- Screen 4: Summary -->
@@ -126,15 +134,35 @@
         <div>
             <h1>Workout Complete!</h1>
             <div class="stats-grid">
-                <div>Duration: <span id="summary-duration"></span></div>
-                <div>Avg Power: <span id="summary-avg-power"></span> W</div>
-                <div>Max Power: <span id="summary-max-power"></span> W</div>
-                <div>Avg HR: <span id="summary-avg-hr"></span></div>
-                <div>TSS: <span id="summary-tss"></span></div>
-                <div>kJ: <span id="summary-kj"></span></div>
+                <div class="stat-item">
+                    <div class="label">Duration</div>
+                    <div id="summary-duration" class="value">0:00</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">Avg Power</div>
+                    <div class="value"><span id="summary-avg-power">0</span> W</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">Max Power</div>
+                    <div class="value"><span id="summary-max-power">0</span> W</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">Avg HR</div>
+                    <div id="summary-avg-hr" class="value">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">TSS</div>
+                    <div id="summary-tss" class="value">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">kJ</div>
+                    <div id="summary-kj" class="value">0</div>
+                </div>
             </div>
-            <button id="upload-strava-btn" class="button">Upload to Strava</button>
-            <button id="done-btn" class="button button-secondary">Done</button>
+            <div class="button-group">
+                <button id="upload-strava-btn" class="button">Upload to Strava</button>
+                <button id="done-btn" class="button button-secondary">Done</button>
+            </div>
         </div>
     </div>
 

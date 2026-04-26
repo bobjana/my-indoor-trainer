@@ -19,9 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const helpModal = $('#help-modal');
 
     function showScreen(name) {
-        Object.values(screens).forEach(s => s.classList.remove('active'));
+        Object.values(screens).forEach(s => {
+            if (s) s.classList.remove('active');
+        });
         if (screens[name]) {
             screens[name].classList.add('active');
+        } else {
+            console.warn(`Screen "${name}" not found.`);
         }
     }
 
@@ -180,12 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCard(w, isToday) {
         const duration = formatTime(api.workoutManager.getTotalDuration(w));
         return `
-            <div class="workout-card">
+            <div class="workout-card glass-panel">
                 <h3>${w.name} ${w.agent ? `<span class="agent-badge">${w.agent}</span>` : ''}</h3>
                 <p>${w.description || ''}</p>
-                <div>
-                    <span>${duration}</span> | <span>FTP: ${w.ftp}W</span>
-                    <button class="button start-workout-btn" data-id="${w.id}" style="float: right;">${isToday ? 'Load & Start' : 'Start'}</button>
+                <div class="meta">
+                    <span>${duration} | FTP: ${w.ftp}W</span>
+                    <button class="button start-workout-btn" data-id="${w.id}">${isToday ? 'Load & Start' : 'Start'}</button>
                 </div>
             </div>`;
     }
@@ -194,15 +198,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderDiagram(workout) {
         const bar = $('.diagram-bar');
         const totalDuration = api.workoutManager.getTotalDuration(workout);
-        bar.innerHTML = workout.intervals.map(iv => {
+        bar.innerHTML = workout.intervals.map((iv, index) => {
             const percentage = (iv.duration / totalDuration) * 100;
             const powerPercent = iv.percentage;
             const zone = PowerZones.getZone(workout.ftp * (powerPercent / 100), workout.ftp);
             const color = PowerZones.getZoneColor(zone);
             // Use height to represent power level
-            const height = Math.min(100, iv.percentage * 0.85);
-            return `<div class="diagram-segment" style="width: ${percentage}%; height: ${height}%; background-color: ${color};"></div>`;
+            const height = Math.min(100, iv.percentage * 0.8);
+            const label = zone <= 1 ? 'Warmup' : zone === 2 ? 'Interval' : zone >= 3 ? 'Hard' : '';
+            return `
+                <div class="diagram-segment" style="width: ${percentage}%; height: ${height}%; background-color: ${color}; color: ${color};" data-index="${index}">
+                    <span class="segment-label">Z${zone} (${label})</span>
+                </div>`;
         }).join('');
+        // Restore the cursor that was overwritten by innerHTML
+        bar.insertAdjacentHTML('beforeend', '<div class="diagram-cursor"></div>');
     }
 
     function updateDiagram(progressPercentage) {
@@ -275,9 +285,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     api.on('metrics', (m) => {
-        $('#power-value').textContent = m.power >= 10 ? m.power : '--';
-        $('#cadence-value').textContent = m.cadence > 0 ? m.cadence : '--';
-        $('#hr-value').childNodes[0].nodeValue = m.hr > 0 ? `${m.hr} ` : '-- ';
+        const pwr = $('#power-value');
+        if (pwr) pwr.textContent = m.power >= 10 ? m.power : '--';
+        
+        const cad = $('#cadence-value');
+        if (cad) cad.textContent = m.cadence > 0 ? m.cadence : '--';
+        
+        const hr = $('#hr-value');
+        if (hr) hr.textContent = m.hr > 0 ? m.hr : '--';
     });
 
     api.on('workoutstart', (w) => {
@@ -310,22 +325,51 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         if (api.state.activeWorkout) {
             const progress = api.getWorkoutProgress();
+            if (!progress) return;
+            
             const progressPercentage = progress.percentage;
             
             // Move cursor
-            $('.diagram-cursor').style.transform = `translateX(${progressPercentage / 100 * $('.diagram-bar').offsetWidth}px)`;
+            const bar = $('.diagram-bar');
+            if (bar) {
+                const barWidth = bar.offsetWidth;
+                const cursor = $('.diagram-cursor');
+                if (cursor) {
+                    cursor.style.transform = `translateX(${progressPercentage / 100 * barWidth}px)`;
+                }
+            }
 
             // Update time display
-            $('#interval-time').textContent = `${formatTime(progress.timeInInterval)} / ${formatTime(progress.currentInterval.duration)}`;
+            const intervalTimeEl = $('#interval-time');
+            if (intervalTimeEl && progress.currentInterval) {
+                intervalTimeEl.textContent = `${formatTime(progress.timeInInterval)} / ${formatTime(progress.currentInterval.duration)}`;
+            }
 
             // Update completed segments
             updateDiagram(progressPercentage);
+            
+            // Highlight active segment
+            const segments = document.querySelectorAll('.diagram-segment');
+            segments.forEach((s, idx) => {
+                if (idx === progress.intervalIndex) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
 
             // Update top progress bar
-            $('#total-progress-fill').style.width = `${progressPercentage}%`;
-            $('#time-spent-display').textContent = formatTime(progress.elapsed);
-            const timeRemaining = progress.total - progress.elapsed;
-            $('#time-remaining-display').textContent = `-${formatTime(timeRemaining)}`;
+            const progressFill = $('#total-progress-fill');
+            if (progressFill) progressFill.style.width = `${progressPercentage}%`;
+            
+            const timeSpentEl = $('#time-spent-display');
+            if (timeSpentEl) timeSpentEl.textContent = formatTime(progress.elapsed);
+            
+            const timeRemEl = $('#time-remaining-display');
+            if (timeRemEl) {
+                const timeRemaining = progress.total - progress.elapsed;
+                timeRemEl.textContent = `-${formatTime(timeRemaining)}`;
+            }
         }
     }, 500);
 

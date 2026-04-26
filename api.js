@@ -28,6 +28,8 @@ class TrainerAPI {
             metricsHistory: [],
             timeWithoutPower: 0,
             isAutoPaused: false,
+            metrics: { power: 0, cadence: 0, hr: 0 },
+            intervalIndex: 0
         }
 
         this._events = {}
@@ -75,6 +77,10 @@ class TrainerAPI {
         // Re-attach handlers
         this.ftms.onMetricsUpdate = (metrics) => this._handleMetrics(metrics)
         this.ftms.onLog = (msg, type) => this._emit('log', { msg, type })
+        
+        if (this.useStub) {
+            this.ftms.onWorkoutUpdate = (progress) => this._handleStubProgress(progress)
+        }
     }
 
     async connectTrainer() {
@@ -153,6 +159,7 @@ class TrainerAPI {
         this.state.activeWorkout = workout
         this.state.startTime = Date.now()
         this.state.pausedDuration = 0
+        this.state.elapsedSeconds = 0
         this.state.currentIntervalIndex = 0
         this.state.metricsHistory = []
 
@@ -291,6 +298,7 @@ class TrainerAPI {
     }
 
     _handleMetrics(metrics) {
+        this.state.metrics = metrics;
         this._emit('metrics', metrics);
 
         const now = Date.now();
@@ -424,7 +432,8 @@ class TrainerAPI {
             percentage,
             currentInterval,
             timeInInterval,
-            intervalProgress
+            intervalProgress,
+            intervalIndex: currentIndex
         }
     }
 
