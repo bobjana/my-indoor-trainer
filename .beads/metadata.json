@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "my_indoor_trainer",
+  "project_id": "60be3968-2297-42f1-9937-c8655c1f717f"
+}
