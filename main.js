@@ -44,6 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    const exitModal = $('#exit-modal');
+    exitModal.addEventListener('click', (e) => {
+        if (e.target === exitModal) {
+            exitModal.style.display = 'none';
+        }
+    });
+
     function formatTime(seconds) {
         const min = Math.floor(seconds / 60).toString();
         const sec = Math.floor(seconds % 60).toString().padStart(2, '0');
@@ -194,7 +201,52 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
     }
 
-    // Workout Screen Logic
+    function updateRollerDeck(currentIndex) {
+        if (!api.state.activeWorkout) return;
+        
+        const intervals = api.state.activeWorkout.intervals;
+        const ftp = api.state.activeWorkout.ftp;
+        const roller = $('#interval-roller');
+        
+        // Initialize rollerdeck if empty
+        if (roller.children.length === 0) {
+            intervals.forEach((iv, idx) => {
+                const targetPower = Math.round(ftp * iv.percentage / 100);
+                let name = iv.name;
+                if (!name) {
+                    const zone = PowerZones.getZone(targetPower, ftp);
+                    name = zone <= 1 ? 'Warmup' : zone === 2 ? 'Interval' : zone >= 3 ? 'Hard' : 'Unknown';
+                }
+                
+                const el = document.createElement('div');
+                el.className = 'roller-item';
+                el.id = `roller-item-${idx}`;
+                
+                el.innerHTML = `
+                    <div class="roller-name">${name} - ${targetPower} W</div>
+                    <div class="roller-time" id="time-display-${idx}">${formatTime(iv.duration)}</div>
+                `;
+                
+                roller.appendChild(el);
+            });
+        }
+        
+        // Update classes based on current index to create rolling effect
+        intervals.forEach((_, idx) => {
+            const el = document.getElementById(`roller-item-${idx}`);
+            if (!el) return;
+            
+            el.className = 'roller-item'; // Reset classes
+            
+            if (idx === currentIndex) {
+                el.classList.add('current');
+            } else if (idx === currentIndex - 1) {
+                el.classList.add('prev');
+            } else if (idx === currentIndex + 1) {
+                el.classList.add('next');
+            }
+        });
+    }
     function renderDiagram(workout) {
         const bar = $('.diagram-bar');
         const totalDuration = api.workoutManager.getTotalDuration(workout);
@@ -205,7 +257,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const color = PowerZones.getZoneColor(zone);
             // Use height to represent power level
             const height = Math.min(100, iv.percentage * 0.8);
-            const label = zone <= 1 ? 'Warmup' : zone === 2 ? 'Interval' : zone >= 3 ? 'Hard' : '';
+            
+            // Generate label based on name or fallback to generic zone name
+            let label = iv.name;
+            if (!label) {
+                label = zone <= 1 ? 'Warmup' : zone === 2 ? 'Interval' : zone >= 3 ? 'Hard' : '';
+            }
+
             return `
                 <div class="diagram-segment" style="width: ${percentage}%; height: ${height}%; background-color: ${color}; color: ${color};" data-index="${index}">
                     <span class="segment-label">Z${zone} (${label})</span>
@@ -220,7 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let cumulativePercentage = 0;
         segments.forEach(segment => {
             const segmentWidth = parseFloat(segment.style.width);
-            if (cumulativePercentage + (segmentWidth / 2) < progressPercentage) {
+            // Only mark as completed if the progress has fully passed the segment
+            if (cumulativePercentage + segmentWidth <= progressPercentage + 0.1) { // 0.1 for float tolerance
                 segment.classList.add('completed');
             } else {
                 segment.classList.remove('completed');
@@ -237,11 +296,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     $('#exit-workout-btn').addEventListener('click', () => {
         if (api.state.activeWorkout) {
-            const confirmed = window.confirm("Are you sure you want to stop the current workout?");
-            if (confirmed) {
-                api.stopWorkout();
-            }
+            $('#exit-modal').style.display = 'flex';
         }
+    });
+
+    $('#exit-continue-btn').addEventListener('click', () => {
+        $('#exit-modal').style.display = 'none';
+    });
+
+    $('#exit-save-btn').addEventListener('click', () => {
+        $('#exit-modal').style.display = 'none';
+        api.stopWorkout();
+    });
+
+    $('#exit-discard-btn').addEventListener('click', () => {
+        $('#exit-modal').style.display = 'none';
+        api.discardWorkout();
     });
 
     $('#upload-strava-btn').addEventListener('click', async () => {
@@ -296,13 +366,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     api.on('workoutstart', (w) => {
+        $('#interval-roller').innerHTML = ''; // Clear rollerdeck on start
         renderDiagram(w);
         showScreen('workout');
     });
 
     api.on('intervalchange', (data) => {
-        const { interval, targetPower } = data;
-        $('#interval-name').textContent = `${interval.name} - ${targetPower} W`;
+        updateRollerDeck(data.index);
     });
     
     api.on('workoutstop', (summary) => {
@@ -313,6 +383,11 @@ document.addEventListener('DOMContentLoaded', () => {
         $('#summary-tss').textContent = summary.tss;
         $('#summary-kj').textContent = summary.kj;
         showScreen('summary');
+    });
+
+    api.on('workoutdiscard', () => {
+        showScreen('selection');
+        renderWorkoutList();
     });
 
     api.on('workoutsUpdated', () => {
@@ -339,10 +414,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Update time display
-            const intervalTimeEl = $('#interval-time');
-            if (intervalTimeEl && progress.currentInterval) {
-                intervalTimeEl.textContent = `${formatTime(progress.timeInInterval)} / ${formatTime(progress.currentInterval.duration)}`;
+            // Update time display in the current rollerdeck item
+            if (progress.currentInterval) {
+                const currentIdx = progress.intervalIndex;
+                const timeEl = document.getElementById(`time-display-${currentIdx}`);
+                if (timeEl) {
+                    timeEl.textContent = `${formatTime(progress.timeInInterval)} / ${formatTime(progress.currentInterval.duration)}`;
+                }
             }
 
             // Update completed segments

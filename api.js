@@ -229,6 +229,20 @@ class TrainerAPI {
         this._emit('phasechange')
     }
 
+    discardWorkout() {
+        if (this.useStub) {
+            this.ftms.stopWorkout();
+        } else {
+            clearInterval(this._timerInterval);
+            this._timerInterval = null;
+        }
+
+        this.state.activeWorkout = null;
+        this.state.phase = 'ready';
+        this._emit('workoutdiscard');
+        this._emit('phasechange');
+    }
+
     _tick() {
         const elapsed = (Date.now() - this.state.startTime - this.state.pausedDuration) / 1000
         this.state.elapsedSeconds = elapsed
