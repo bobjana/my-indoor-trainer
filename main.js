@@ -546,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('summary');
     });
 
-    api.on('workoutdiscard'), () => {
+    api.on('workoutdiscard', () => {
         workoutCompletedNaturally = false;
         showScreen('selection');
         renderWorkoutList();
