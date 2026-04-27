@@ -121,7 +121,11 @@ export class WorkoutManager {
                 name: String(interval.name),
                 type: interval.type != null ? String(interval.type) : 'active',
                 duration: Number(interval.duration),
-                percentage: Number(interval.percentage)
+                powerType: interval.powerType != null ? String(interval.powerType) : 'relative',
+                percentage: interval.percentage != null ? Number(interval.percentage) : null,
+                power: interval.power != null ? Number(interval.power) : null,
+                percentageLow: interval.percentageLow != null ? Number(interval.percentageLow) : null,
+                percentageHigh: interval.percentageHigh != null ? Number(interval.percentageHigh) : null
             })),
             created: json.created || new Date().toISOString()
         }
@@ -330,8 +334,25 @@ export class WorkoutManager {
                     errors.push(`${prefix}.duration must be a positive number`)
                 }
 
-                if (typeof interval.percentage !== 'number' || isNaN(interval.percentage) || interval.percentage < 0 || interval.percentage > 200) {
-                    errors.push(`${prefix}.percentage must be a number between 0 and 200`)
+                const powerType = interval.powerType || 'relative'
+
+                if (powerType === 'relative') {
+                    if (typeof interval.percentage !== 'number' || isNaN(interval.percentage) || interval.percentage < 0 || interval.percentage > 200) {
+                        errors.push(`${prefix}.percentage must be a number between 0 and 200`)
+                    }
+                } else if (powerType === 'absolute') {
+                    if (typeof interval.power !== 'number' || isNaN(interval.power) || interval.power < 0) {
+                        errors.push(`${prefix}.power must be a positive number for absolute power type`)
+                    }
+                } else if (powerType === 'ramp') {
+                    if (typeof interval.percentageLow !== 'number' || isNaN(interval.percentageLow) || interval.percentageLow < 0) {
+                        errors.push(`${prefix}.percentageLow must be a positive number for ramp power type`)
+                    }
+                    if (typeof interval.percentageHigh !== 'number' || isNaN(interval.percentageHigh) || interval.percentageHigh < 0) {
+                        errors.push(`${prefix}.percentageHigh must be a positive number for ramp power type`)
+                    }
+                } else {
+                    errors.push(`${prefix}.powerType must be 'relative', 'absolute', or 'ramp'`)
                 }
             }
         }

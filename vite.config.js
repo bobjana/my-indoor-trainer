@@ -9,7 +9,8 @@ export default defineConfig({
     },
     plugins: [
         localSessionsPlugin({
-            dir: './sessions'
+            dir: './sessions',
+            samplesDir: './samples'
         })
     ]
 })

@@ -169,7 +169,7 @@ class TrainerAPI {
         this.state.metricsHistory = []
 
         const firstInterval = workout.intervals[0]
-        const targetPower = Math.round(workout.ftp * firstInterval.percentage / 100)
+        const targetPower = calcTargetPower(workout.ftp, firstInterval)
         
         if (this.useStub) {
             this.ftms.startWorkout(workout);
@@ -278,7 +278,7 @@ class TrainerAPI {
         if (newIntervalIndex !== this.state.currentIntervalIndex) {
             this.state.currentIntervalIndex = newIntervalIndex
             const interval = intervals[newIntervalIndex]
-            const targetPower = Math.round(this.state.activeWorkout.ftp * interval.percentage / 100)
+            const targetPower = calcTargetPower(this.state.activeWorkout.ftp, interval)
             this.ftms.setTargetPower(targetPower)
             this._emit('intervalchange', {
                 index: newIntervalIndex,
@@ -300,7 +300,7 @@ class TrainerAPI {
             this.state.currentIntervalIndex = progress.currentIntervalIndex;
             const interval = this.state.activeWorkout.intervals[progress.currentIntervalIndex];
             if (interval) {
-                const targetPower = Math.round(this.state.activeWorkout.ftp * interval.percentage / 100);
+                const targetPower = calcTargetPower(this.state.activeWorkout.ftp, interval);
                 
                 this._emit('intervalchange', {
                     index: progress.currentIntervalIndex,

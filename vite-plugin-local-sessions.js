@@ -12,6 +12,7 @@ import path from 'path'
  */
 export default function localSessionsPlugin(options = {}) {
     const sessionsDir = path.resolve(options.dir || './sessions')
+    const samplesDir = path.resolve(options.samplesDir || './samples')
 
     function ensureDir() {
         if (!fs.existsSync(sessionsDir)) {
@@ -21,17 +22,24 @@ export default function localSessionsPlugin(options = {}) {
 
     function readJsonFiles() {
         ensureDir()
-        const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.json'))
-        return files.map(filename => {
-            try {
-                const content = fs.readFileSync(path.join(sessionsDir, filename), 'utf-8')
-                const data = JSON.parse(content)
-                return { filename, data, source: 'disk' }
-            } catch (e) {
-                console.error(`[local-sessions] Error reading ${filename}:`, e.message)
-                return { filename, data: null, source: 'disk', error: e.message }
+        const dirs = [sessionsDir]
+        // Include samples dir as a read-only source
+        if (fs.existsSync(samplesDir)) dirs.push(samplesDir)
+
+        const files = []
+        for (const dir of dirs) {
+            const dirFiles = fs.readdirSync(dir).filter(f => f.endsWith('.json'))
+            for (const filename of dirFiles) {
+                try {
+                    const content = fs.readFileSync(path.join(dir, filename), 'utf-8')
+                    const data = JSON.parse(content)
+                    files.push({ filename, data, source: 'disk' })
+                } catch (e) {
+                    console.error(`[local-sessions] Error reading ${filename}:`, e.message)
+                }
             }
-        }).filter(f => f.data !== null)
+        }
+        return files
     }
 
     function readJsonFile(filename) {
