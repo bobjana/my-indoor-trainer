@@ -2,9 +2,100 @@ export class WorkoutManager {
     constructor() {
         this.storageKey = 'indoor-trainer-workouts'
         this.summaryKey = 'indoor-trainer-last-summary'
+        this.historyKey = 'indoor-trainer-session-history'
         this.settingsKey = 'indoor-trainer-settings'
         this.workouts = this._loadWorkouts()
         this.onUpdate = null
+        this._diskReady = false
+    }
+
+    /**
+     * Fetch workout definitions from the local sessions/ folder via the
+     * Vite dev-server middleware and merge them into the in-memory list.
+     * Safe to call multiple times — disk workouts are merged by ID.
+     */
+    async syncFromDisk() {
+        try {
+            const res = await fetch('/api/sessions')
+            if (!res.ok) return false
+            const { sessions } = await res.json()
+            if (!Array.isArray(sessions)) return false
+
+            let added = 0
+            for (const { filename, data } of sessions) {
+                // Only treat files that look like workout definitions
+                // (have intervals array and name).  Completed-session files
+                // will lack a proper intervals structure or are prefixed.
+                if (!data || !Array.isArray(data.intervals) || !data.name) continue
+                // Skip completed-session files
+                if (filename.startsWith('completed-')) continue
+
+                const existing = this.workouts.find(w => w.id === data.id)
+                if (existing) continue
+
+                const result = this.createWorkout(data)
+                if (result.success) added++
+            }
+
+            this._diskReady = true
+            if (added > 0) {
+                console.log(`[sessions] Imported ${added} workout(s) from disk`)
+            }
+            return true
+        } catch (e) {
+            // Endpoint not available (e.g. production build without server)
+            console.log('[sessions] Disk sync unavailable:', e.message)
+            return false
+        }
+    }
+
+    /**
+     * Save a completed session summary to the local sessions/ folder.
+     */
+    async saveSessionToDisk(summary) {
+        try {
+            const res = await fetch('/api/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(summary)
+            })
+            if (!res.ok) {
+                console.error('[sessions] Failed to save session to disk')
+                return false
+            }
+            const { filename } = await res.json()
+            console.log(`[sessions] Session saved to disk: ${filename}`)
+            return true
+        } catch (e) {
+            console.error('[sessions] Disk save unavailable:', e.message)
+            return false
+        }
+    }
+
+    // ── Session history (localStorage) ──────────────────────────────
+
+    /**
+     * Append a completed session to the local history array.
+     */
+    appendSessionHistory(summary) {
+        const history = this.getSessionHistory()
+        history.push(summary)
+        // Keep last 50 sessions
+        if (history.length > 50) history.splice(0, history.length - 50)
+        try {
+            localStorage.setItem(this.historyKey, JSON.stringify(history))
+        } catch (e) {
+            console.error('Failed to save session history:', e)
+        }
+    }
+
+    getSessionHistory() {
+        try {
+            const saved = localStorage.getItem(this.historyKey)
+            return saved ? JSON.parse(saved) : []
+        } catch (e) {
+            return []
+        }
     }
 
     createWorkout(json) {
@@ -99,6 +190,9 @@ export class WorkoutManager {
         } catch (e) {
             console.error('Failed to save workout summary:', e)
         }
+        // Also persist to disk and history
+        this.saveSessionToDisk(summary)
+        this.appendSessionHistory(summary)
     }
 
     getLastWorkoutSummary() {

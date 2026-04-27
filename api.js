@@ -40,6 +40,9 @@ class TrainerAPI {
         this.ftms.onMetricsUpdate = (metrics) => this._handleMetrics(metrics)
         this.ftms.onLog = (msg, type) => this._emit('log', { msg, type })
         this.workoutManager.onUpdate = () => this._emit('workoutsUpdated')
+
+        // Load any workout JSON files from the local sessions/ folder
+        this.workoutManager.syncFromDisk()
         this.strava.onStatusChange = (connected) => {
             this._emit('stravaStatus', connected)
         }
