@@ -10,6 +10,8 @@ class TrainerAPI {
 
         this.workoutManager = new WorkoutManager()
         this.strava = new StravaIntegration()
+        this.strava.onLog = (msg) => this._emit('log', { msg, type: 'info' })
+        this.strava.onStatusChange = (status) => this._emit('stravastatus', status)
 
         this.state = {
             connected: false,
@@ -403,6 +405,7 @@ class TrainerAPI {
         return {
             workoutId: workout ? workout.id : null,
             workoutName: workout ? workout.name : '',
+            name: workout ? workout.name : 'Indoor Trainer Workout',
             duration,
             avgPower,
             maxPower,
@@ -411,7 +414,9 @@ class TrainerAPI {
             tss: Math.round(tss * 10) / 10,
             kj: Math.round(kj * 10) / 10,
             timestamp: Date.now(),
-            intervalCount: workout ? workout.intervals.length : 0
+            intervalCount: workout ? workout.intervals.length : 0,
+            intervals: workout ? workout.intervals : [],
+            ftp: workout ? workout.ftp : 200
         }
     }
 
@@ -463,8 +468,8 @@ class TrainerAPI {
         return this.workoutManager.updateSettings(s)
     }
 
-    async connectStrava(clientId) {
-        return await this.strava.connect(clientId)
+    async connectStrava() {
+        return await this.strava.connect()
     }
 
     async uploadToStrava() {
@@ -474,7 +479,7 @@ class TrainerAPI {
     }
 
     isStravaConnected() {
-        return this.strava.isConnected()
+        return this.strava.isConnected
     }
 }
 

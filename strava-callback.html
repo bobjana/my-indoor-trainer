@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Strava Auth</title>
+</head>
+<body>
+    <p>Authenticating...</p>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const error = params.get('error');
+
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'strava-callback',
+                code: code,
+                error: error
+            }, window.location.origin);
+            window.close();
+        } else {
+            document.body.innerHTML = '<p>Error: Could not communicate with main window. Please close this tab and try again.</p>';
+        }
+    </script>
+</body>
+</html>

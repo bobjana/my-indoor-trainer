@@ -315,23 +315,156 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     $('#upload-strava-btn').addEventListener('click', async () => {
-        const confirmed = window.confirm("Are you sure you want to upload this workout to Strava?");
-        if (!confirmed) {
-            return;
-        }
-
         const btn = $('#upload-strava-btn');
         if (!api.isStravaConnected()) {
-            // Replace with your Strava Client ID
-            const success = await api.connectStrava('YOUR_STRAVA_CLIENT_ID');
+            const success = await api.connectStrava();
             if (!success) {
                 btn.textContent = 'Auth Failed';
+                setTimeout(() => { btn.textContent = 'Upload to Strava'; }, 3000);
                 return;
             }
         }
         btn.textContent = 'Uploading...';
         const result = await api.uploadToStrava();
-        btn.textContent = result.success ? 'Upload Complete!' : 'Upload Failed';
+        
+        if (result.success) {
+            btn.textContent = 'Upload Complete!';
+            btn.disabled = true;
+            btn.style.backgroundColor = '#4CAF50';
+            btn.style.borderColor = '#4CAF50';
+        } else {
+            btn.textContent = 'Upload Failed';
+            setTimeout(() => { btn.textContent = 'Upload to Strava'; }, 3000);
+            alert(`Strava Upload failed: ${result.error}`);
+        }
+    });
+
+    $('#download-screenshot-btn').addEventListener('click', () => {
+        const summary = api.workoutManager.getLastWorkoutSummary();
+        const workout = api.state.activeWorkout || (summary ? api.workoutManager.getWorkout(summary.id) : null) || summary;
+        if (!workout) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 630;
+        const ctx = canvas.getContext('2d');
+        
+        // Background
+        ctx.fillStyle = '#0f1218';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Title
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 60px "Outfit", sans-serif';
+        ctx.fillText(workout.name || 'Indoor Trainer Workout', 60, 100);
+        
+        // Subtitle stats
+        if (summary) {
+            ctx.font = '30px "Outfit", sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(`${formatTime(summary.duration)} • ${summary.tss} TSS • ${summary.avgPower} W Avg`, 60, 160);
+        }
+
+        // Draw intervals (TrainerRoad style)
+        const startX = 60;
+        const endX = 1140;
+        const width = endX - startX;
+        const startY = 550;
+        const maxHeight = 300;
+
+        const totalDuration = summary ? summary.duration : api.workoutManager.getTotalDuration(workout);
+        const ftp = workout.ftp || 200;
+
+        if (workout.intervals && workout.intervals.length > 0 && totalDuration > 0) {
+            let currentX = startX;
+            
+            // Draw planned blocks in solid blue
+            workout.intervals.forEach((iv) => {
+                const wRatio = iv.duration / api.workoutManager.getTotalDuration(workout);
+                const segWidth = width * wRatio;
+                const pRatio = Math.min(iv.percentage, 150) / 150;
+                const segHeight = maxHeight * pRatio;
+                
+                // TrainerRoad classic blue blocks
+                ctx.fillStyle = 'rgba(0, 168, 255, 0.5)';
+                ctx.strokeStyle = '#00a8ff';
+                ctx.lineWidth = 2;
+                
+                ctx.fillRect(currentX, startY - segHeight, Math.ceil(segWidth), segHeight);
+                ctx.strokeRect(currentX, startY - segHeight, Math.ceil(segWidth), segHeight);
+                
+                currentX += segWidth;
+            });
+        }
+        
+        // Draw baseline
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, startY);
+        ctx.stroke();
+        
+        // Draw Legend
+        ctx.font = '20px "Outfit", sans-serif';
+        ctx.fillStyle = '#00a8ff';
+        ctx.fillText('■ Planned Power', 60, 590);
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText('— Actual Power', 250, 590);
+        ctx.fillStyle = 'rgba(255, 59, 59, 0.9)';
+        ctx.fillText('— Heart Rate', 430, 590);
+
+        // Draw actual power line overlay in bright yellow
+        const history = api.state.metricsHistory;
+        if (history && history.length > 0 && totalDuration > 0) {
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            
+            history.forEach((m, i) => {
+                const px = startX + (width * (m.elapsed / totalDuration));
+                // Target power = 100% FTP = 100/150 * maxHeight
+                const powerPercent = (m.power / ftp) * 100;
+                const pRatio = Math.min(powerPercent, 150) / 150;
+                const py = startY - (maxHeight * pRatio);
+                
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            });
+            ctx.stroke();
+            
+            // Draw HR line overlay in red (optional, scaled against max HR)
+            ctx.strokeStyle = 'rgba(255, 59, 59, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let hrStarted = false;
+            history.forEach((m, i) => {
+                if (!m.heartRate) return;
+                const px = startX + (width * (m.elapsed / totalDuration));
+                // Scale HR relative to standard 200 max
+                const hRatio = Math.min(m.hr, 200) / 200;
+                // Place it using slightly different scale so it doesnt overlap perfectly with power
+                const py = startY - (maxHeight * 1.2 * hRatio);
+                
+                if (!hrStarted) {
+                    ctx.moveTo(px, py);
+                    hrStarted = true;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            });
+            ctx.stroke();
+        }
+        
+        // Trigger Download
+        const link = document.createElement('a');
+        link.download = `workout-${workout.name ? workout.name.replace(/\s+/g, '-').toLowerCase() : 'summary'}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
     });
 
     // API Event Handlers

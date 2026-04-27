@@ -11,9 +11,19 @@ export class StravaIntegration {
         return !!(this.tokens && this.tokens.access_token)
     }
 
-    async connect(clientId) {
+    async connect() {
+        console.log("STRAVA CONNECT CALLED");
         try {
-            this.clientId = clientId
+            const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
+            const clientSecret = import.meta.env.VITE_STRAVA_CLIENT_SECRET;
+            
+            console.log("CLIENT ID:", clientId);
+
+            if (!clientId || !clientSecret) {
+                throw new Error('Strava credentials missing in environment variables (.env)');
+            }
+
+            this.clientId = clientId;
             const redirectUri = window.location.origin + '/strava-callback.html'
             const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=activity:write&approval_prompt=auto`
 
@@ -54,7 +64,7 @@ export class StravaIntegration {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     client_id: clientId,
-                    client_secret: '',
+                    client_secret: clientSecret,
                     code: code,
                     grant_type: 'authorization_code'
                 })
@@ -124,11 +134,13 @@ export class StravaIntegration {
 
     async _refreshToken() {
         try {
+            const clientSecret = import.meta.env.VITE_STRAVA_CLIENT_SECRET;
             const response = await fetch('https://www.strava.com/oauth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     client_id: this.clientId,
+                    client_secret: clientSecret,
                     grant_type: 'refresh_token',
                     refresh_token: this.tokens.refresh_token
                 })
@@ -168,8 +180,16 @@ export class StravaIntegration {
             const formData = new FormData()
             formData.append('file', blob, 'activity.tcx')
             formData.append('data_type', 'tcx')
-            formData.append('activity_type', 'Ride')
-            formData.append('name', workoutSummary.name || 'Indoor Trainer Workout')
+            formData.append('activity_type', 'VirtualRide')
+            formData.append('name', `Indoor Trainer - ${workoutSummary.name || 'Workout'}`)
+            
+            const description = `Completed on My Indoor Trainer 🚴‍♂️
+Workout: ${workoutSummary.name || 'Custom'}
+Duration: ${Math.floor((workoutSummary.duration||0)/60)}m ${(workoutSummary.duration||0)%60}s
+TSS: ${workoutSummary.tss || 0} | Work: ${workoutSummary.kj || 0} kJ
+Avg Power: ${workoutSummary.avgPower || 0} W | Max Power: ${workoutSummary.maxPower || 0} W`;
+
+        formData.append('description', description);
 
             const response = await fetch('https://www.strava.com/api/v3/uploads', {
                 method: 'POST',

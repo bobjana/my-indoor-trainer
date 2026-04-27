@@ -3,3 +3,8 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# Env variables
+.env
+.env.local
+node_modules/
