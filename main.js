@@ -540,10 +540,13 @@ document.addEventListener('DOMContentLoaded', () => {
             stravaBtn.style.borderColor = '';
         }
 
+        // Dismiss any modals that might be overlaying
+        $('#autopause-modal').style.display = 'none';
+        $('#exit-modal').style.display = 'none';
         showScreen('summary');
     });
 
-    api.on('workoutdiscard', () => {
+    api.on('workoutdiscard'), () => {
         workoutCompletedNaturally = false;
         showScreen('selection');
         renderWorkoutList();
