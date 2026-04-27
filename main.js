@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         summary: $('#summary-screen'),
     };
     const helpModal = $('#help-modal');
+    let workoutCompletedNaturally = false;
 
     function showScreen(name) {
         Object.values(screens).forEach(s => {
@@ -499,26 +500,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     api.on('workoutstart', (w) => {
+        workoutCompletedNaturally = false;
         $('#interval-roller').innerHTML = ''; // Clear rollerdeck on start
         renderDiagram(w);
         showScreen('workout');
+    });
+
+    api.on('workoutcomplete', () => {
+        workoutCompletedNaturally = true;
     });
 
     api.on('intervalchange', (data) => {
         updateRollerDeck(data.index);
     });
     
-    api.on('workoutstop', (summary) => {
+    api.on('workoutstop', async (summary) => {
         $('#summary-duration').textContent = formatTime(summary.duration);
         $('#summary-avg-power').textContent = summary.avgPower;
         $('#summary-max-power').textContent = summary.maxPower;
         $('#summary-avg-hr').textContent = summary.avgHR;
         $('#summary-tss').textContent = summary.tss;
         $('#summary-kj').textContent = summary.kj;
+
+        const stravaBtn = $('#upload-strava-btn');
+        if (workoutCompletedNaturally && api.isStravaConnected()) {
+            // Auto-upload to Strava — hide button, upload silently
+            stravaBtn.style.display = 'none';
+            const result = await api.uploadToStrava();
+            if (!result.success) {
+                // Upload failed — show the button so user can retry
+                stravaBtn.style.display = '';
+            }
+        } else {
+            // Show the upload button as normal
+            stravaBtn.style.display = '';
+            stravaBtn.textContent = 'Upload to Strava';
+            stravaBtn.disabled = false;
+            stravaBtn.style.backgroundColor = '';
+            stravaBtn.style.borderColor = '';
+        }
+
         showScreen('summary');
     });
 
     api.on('workoutdiscard', () => {
+        workoutCompletedNaturally = false;
         showScreen('selection');
         renderWorkoutList();
     });
