@@ -4,6 +4,13 @@ import { WorkoutManager } from './workout-manager.js';
 import { StravaIntegration } from './strava.js';
 
 class TrainerAPI {
+    static calcTargetPower(ftp, interval) {
+        const powerType = interval.powerType || 'relative';
+        if (powerType === 'absolute') return interval.power;
+        if (powerType === 'ramp') return Math.round(ftp * interval.percentageLow / 100);
+        return Math.round(ftp * (interval.percentage || 0) / 100);
+    }
+
     constructor() {
         this.useStub = new URLSearchParams(window.location.search).get('stub') === 'true';
         this.ftms = this.useStub ? new StubFTMSController() : new FTMSController();
@@ -169,7 +176,7 @@ class TrainerAPI {
         this.state.metricsHistory = []
 
         const firstInterval = workout.intervals[0]
-        const targetPower = calcTargetPower(workout.ftp, firstInterval)
+        const targetPower = TrainerAPI.calcTargetPower(workout.ftp, firstInterval)
         
         if (this.useStub) {
             this.ftms.startWorkout(workout);
@@ -278,7 +285,7 @@ class TrainerAPI {
         if (newIntervalIndex !== this.state.currentIntervalIndex) {
             this.state.currentIntervalIndex = newIntervalIndex
             const interval = intervals[newIntervalIndex]
-            const targetPower = calcTargetPower(this.state.activeWorkout.ftp, interval)
+            const targetPower = TrainerAPI.calcTargetPower(this.state.activeWorkout.ftp, interval)
             this.ftms.setTargetPower(targetPower)
             this._emit('intervalchange', {
                 index: newIntervalIndex,
@@ -300,7 +307,7 @@ class TrainerAPI {
             this.state.currentIntervalIndex = progress.currentIntervalIndex;
             const interval = this.state.activeWorkout.intervals[progress.currentIntervalIndex];
             if (interval) {
-                const targetPower = calcTargetPower(this.state.activeWorkout.ftp, interval);
+                const targetPower = TrainerAPI.calcTargetPower(this.state.activeWorkout.ftp, interval);
                 
                 this._emit('intervalchange', {
                     index: progress.currentIntervalIndex,
