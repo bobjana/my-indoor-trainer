@@ -63,6 +63,9 @@ export class FTMSController {
                 this.server = await this.device.gatt.connect();
                 this.log(`Reconnected to ${this.device.name}!`, 'success');
 
+                this.trainerName = this.device.name;
+                this.trainerBrand = this.getTrainerBrand(this.device.name);
+
                 await this.subscribeToMetrics();
                 await this.initializeFTMS();
 
@@ -129,7 +132,7 @@ export class FTMSController {
                     { namePrefix: 'Wahoo' },
                     // Tacx trainers
                     { namePrefix: 'Tacx' },
-                    { namePrefix: 'NEO' },
+                    { namePrefix: 'Neo' },
                     { namePrefix: 'Flux' },
                     // Elite trainers
                     { namePrefix: 'Elite' },
@@ -150,7 +153,8 @@ export class FTMSController {
                     { namePrefix: 'BKOOL' },
                     // Wattbike
                     { namePrefix: 'WATTBIKE' },
-                    { namePrefix: 'Atom' }
+                    { namePrefix: 'Atom' },
+                    { services: [this.FITNESS_MACHINE_SERVICE] }
                 ],
                 optionalServices: [
                     this.FITNESS_MACHINE_SERVICE,
@@ -161,9 +165,12 @@ export class FTMSController {
                 ]
             });
 
-            this.log(`Found: ${this.device.name}`, 'success');
+        this.log(`Found: ${this.device.name}`, 'success');
             this.server = await this.device.gatt.connect();
             this.log('Connected to GATT server', 'success');
+
+            this.trainerName = this.device.name;
+            this.trainerBrand = this.getTrainerBrand(this.device.name);
 
             await this.subscribeToMetrics();
             await this.initializeFTMS();

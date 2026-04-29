@@ -100,7 +100,7 @@ class TrainerAPI {
         if (result.success) {
             this.state.connected = true;
             this.state.trainerName = this.ftms.trainerName || '';
-            this.state.trainerBrand = this.ftms.getTrainerBrand();
+            this.state.trainerBrand = this.ftms.trainerBrand || '';
             this.state.phase = 'ready';
             this._emit('connect');
             this._emit('phasechange');
@@ -127,7 +127,7 @@ class TrainerAPI {
         if (result) {
             this.state.connected = true
             this.state.trainerName = this.ftms.trainerName || ''
-            this.state.trainerBrand = this.ftms.getTrainerBrand()
+            this.state.trainerBrand = this.ftms.trainerBrand || ''
             this.state.phase = 'ready'
             this._emit('connect')
             this._emit('phasechange')

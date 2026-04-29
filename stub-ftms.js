@@ -3,6 +3,8 @@ export class StubFTMSController {
     constructor() {
         this.ws = null;
         this.device = { id: 'STUB-TRAINER', name: 'Stub Trainer' };
+        this.trainerName = this.device.name;
+        this.trainerBrand = 'StubBrand';
         this.metrics = { power: 0, hr: 0, cadence: 0, timestamp: Date.now() };
         this.onMetricsUpdate = null;
         this.onWorkoutUpdate = null;
