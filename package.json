@@ -18,9 +18,7 @@
   "dependencies": {
     "detect-libc": "^2.1.2",
     "fdir": "^6.5.0",
-    "fsevents": "^2.3.3",
     "lightningcss": "^1.32.0",
-    "lightningcss-darwin-arm64": "^1.32.0",
     "nanoid": "^3.3.11",
     "picocolors": "^1.1.1",
     "picomatch": "^4.0.4",
@@ -29,5 +27,9 @@
     "rolldown": "^1.0.0-rc.17",
     "source-map-js": "^1.2.1",
     "tinyglobby": "^0.2.16"
+  },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3",
+    "lightningcss-darwin-arm64": "^1.32.0"
   }
 }
