@@ -496,6 +496,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // API Event Handlers
+    $('#pause-resume-btn').addEventListener('click', () => {
+        api.autoResumeWorkout();
+    });
+
+    $('#pause-end-btn').addEventListener('click', () => {
+        $('#autopause-modal').style.display = 'none';
+        api.stopWorkout();
+    });
+
     api.on('autopause', () => {
         $('#autopause-modal').style.display = 'flex';
     });

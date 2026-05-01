@@ -16,6 +16,9 @@ class TrainerAPI {
         this.ftms = this.useStub ? new StubFTMSController() : new FTMSController();
 
         this.workoutManager = new WorkoutManager()
+        this.smoothingSeconds = this.getSettings().smoothingSeconds || 3;
+        this.powerBuffer = [];
+        this.cadenceBuffer = [];
         this.strava = new StravaIntegration()
         this.strava.onLog = (msg) => this._emit('log', { msg, type: 'info' })
         this.strava.onStatusChange = (status) => this._emit('stravastatus', status)
@@ -37,6 +40,7 @@ class TrainerAPI {
             metricsHistory: [],
             timeWithoutPower: 0,
             isAutoPaused: false,
+            waitingForPower: false,
             metrics: { power: 0, cadence: 0, hr: 0 },
             intervalIndex: 0
         }
@@ -191,11 +195,14 @@ class TrainerAPI {
         if (!workout) return false
 
         this.state.activeWorkout = workout
-        this.state.startTime = Date.now()
+        this.state.startTime = null // Will be set when power is detected
         this.state.pausedDuration = 0
         this.state.elapsedSeconds = 0
         this.state.currentIntervalIndex = 0
         this.state.metricsHistory = []
+        this.powerBuffer = []
+        this.cadenceBuffer = []
+        this.state.waitingForPower = true
 
         const firstInterval = workout.intervals[0]
         const targetPower = TrainerAPI.calcTargetPower(workout.ftp, firstInterval)
@@ -204,7 +211,7 @@ class TrainerAPI {
             this.ftms.startWorkout(workout);
         } else {
             await this.ftms.setTargetPower(targetPower)
-            this._timerInterval = setInterval(() => this._tick(), 100)
+            // Timer will be started in _handleMetrics when power is detected
         }
 
         this._emit('workoutstart', workout)
@@ -215,6 +222,18 @@ class TrainerAPI {
         })
 
         return true
+    }
+
+    _startTimer() {
+        if (this.state.startTime && !this.state.waitingForPower) return;
+        this.state.startTime = Date.now();
+        this.state.waitingForPower = false;
+        
+        if (!this.useStub) {
+            this._timerInterval = setInterval(() => this._tick(), 100);
+        }
+        
+        this._emit('workouttimerstart');
     }
 
     pauseWorkout() {
@@ -320,6 +339,14 @@ class TrainerAPI {
     _handleStubProgress(progress) {
         if (!this.state.activeWorkout || !progress) return;
 
+        if (this.state.waitingForPower) {
+            if (this.state.metrics.power >= 10) {
+                this._startTimer();
+            } else {
+                return;
+            }
+        }
+
         // Update elapsed time from server
         const totalDuration = this.workoutManager.getTotalDuration(this.state.activeWorkout);
         this.state.elapsedSeconds = (progress.percentageComplete / 100) * totalDuration;
@@ -346,15 +373,40 @@ class TrainerAPI {
     }
 
     _handleMetrics(metrics) {
-        this.state.metrics = metrics;
-        this._emit('metrics', metrics);
-
         const now = Date.now();
+        
+        // Smoothing logic
+        this.powerBuffer.push({ value: metrics.power, timestamp: now });
+        this.cadenceBuffer.push({ value: metrics.cadence, timestamp: now });
+        
+        const cutoff = now - (this.smoothingSeconds * 1000);
+        this.powerBuffer = this.powerBuffer.filter(p => p.timestamp > cutoff);
+        this.cadenceBuffer = this.cadenceBuffer.filter(c => c.timestamp > cutoff);
+        
+        const smoothedPower = Math.round(this.powerBuffer.reduce((sum, p) => sum + p.value, 0) / this.powerBuffer.length);
+        const smoothedCadence = Math.round(this.cadenceBuffer.reduce((sum, c) => sum + c.value, 0) / this.cadenceBuffer.length);
+
+        const smoothedMetrics = {
+            ...metrics,
+            power: smoothedPower,
+            cadence: smoothedCadence
+        };
+
+        this.state.metrics = smoothedMetrics;
+        this._emit('metrics', smoothedMetrics);
+
         const lastMetricsTime = this.state.metricsHistory.length > 0 ? this.state.metricsHistory[this.state.metricsHistory.length - 1].timestamp : now;
         const timeDelta = (now - lastMetricsTime) / 1000;
 
         if (this.state.activeWorkout) { // Run auto-pause logic for both real and stub trainers
-            const isPowerPresent = metrics.power >= 10;
+            const isPowerPresent = smoothedMetrics.power >= 10;
+
+            if (this.state.waitingForPower) {
+                if (isPowerPresent) {
+                    this._startTimer();
+                }
+                return; // Don't do auto-pause logic while waiting for initial power
+            }
 
             if (isPowerPresent) {
                 // Power is present
@@ -381,11 +433,12 @@ class TrainerAPI {
         if (this.state.activeWorkout) {
             this.state.metricsHistory.push({
                 timestamp: now,
-                power: metrics.power,
+                power: smoothedMetrics.power,
                 hr: metrics.hr,
-                cadence: metrics.cadence,
+                cadence: smoothedMetrics.cadence,
                 targetPower: metrics.targetPower,
-                intervalIndex: this.state.currentIntervalIndex
+                intervalIndex: this.state.currentIntervalIndex,
+                elapsed: this.state.elapsedSeconds // Important for drawing the graph correctly
             });
             if (this.state.metricsHistory.length > 10000) {
                 this.state.metricsHistory.shift();
@@ -498,7 +551,9 @@ class TrainerAPI {
     }
 
     updateSettings(s) {
-        return this.workoutManager.updateSettings(s)
+        const result = this.workoutManager.updateSettings(s)
+        this.smoothingSeconds = this.getSettings().smoothingSeconds || 3
+        return result
     }
 
     async connectStrava() {

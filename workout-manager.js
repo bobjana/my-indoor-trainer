@@ -234,7 +234,7 @@ export class WorkoutManager {
     }
 
     getSettings() {
-        const defaults = { ftp: 200, maxHR: 190 }
+        const defaults = { ftp: 200, maxHR: 190, smoothingSeconds: 3 }
         try {
             const saved = localStorage.getItem(this.settingsKey)
             if (saved) {

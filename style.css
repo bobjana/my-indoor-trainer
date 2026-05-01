@@ -109,6 +109,14 @@ html, body {
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.05);
 }
 
+.button-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
 /* Connect Screen */
 #connect-screen h1 {
     font-size: 4rem;

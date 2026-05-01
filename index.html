@@ -50,10 +50,14 @@
 
     <!-- Auto-pause Modal -->
     <div id="autopause-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content" style="text-align: center;">
             <h2>Workout Paused</h2>
             <p>No power detected from the trainer. The workout has been automatically paused.</p>
-            <p>Resume pedaling to continue.</p>
+            <div class="button-group" style="margin-top: 2rem;">
+                <button id="pause-resume-btn" class="button">Resume</button>
+                <button id="pause-end-btn" class="button button-secondary" style="border-color: var(--hr-color); color: var(--hr-color);">End</button>
+            </div>
+            <p style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">Or resume pedaling to continue automatically.</p>
         </div>
     </div>
 
