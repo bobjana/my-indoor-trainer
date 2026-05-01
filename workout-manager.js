@@ -145,11 +145,21 @@ export class WorkoutManager {
     }
 
     getWorkouts() {
-        return [...this.workouts].sort((a, b) => {
+        const sorted = [...this.workouts].sort((a, b) => {
             if (!a.created) return 1
             if (!b.created) return -1
             return new Date(b.created) - new Date(a.created)
-        })
+        });
+        
+        const unique = [];
+        const seenNames = new Set();
+        for (const w of sorted) {
+            if (!seenNames.has(w.name)) {
+                seenNames.add(w.name);
+                unique.push(w);
+            }
+        }
+        return unique;
     }
 
     getWorkout(id) {

@@ -59,21 +59,24 @@
 
     <!-- Screen 2: Workout Selection -->
     <div id="workout-selection-screen" class="screen">
-        <div class="header">
-            <span id="trainer-name-display"></span>
-            <button id="disconnect-btn" class="button-icon" title="Disconnect Trainer">&times;</button>
+        <div class="top-nav">
+            <div class="nav-brand">Indoor Trainer</div>
+            <div class="nav-controls">
+                <span id="trainer-name-display"></span>
+                <button id="disconnect-btn" class="button button-secondary" title="Disconnect Trainer" style="min-width: auto; padding: 0.5rem 1rem;">Disconnect</button>
+            </div>
         </div>
         <div class="workout-list">
             <div id="todays-workout-card" style="display:none;">
                 <h2>Today's Workout</h2>
                 <div id="todays-workout-details"></div>
             </div>
-            <div class="list-header">
-                <h2>Workout Library</h2>
-                <label for="import-workout-input" class="button button-secondary button-small">Import</label>
+            <div class="list-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <h2 style="margin: 0;">Workout Library</h2>
+                <label for="import-workout-input" class="button" style="margin: 0;">Import Workout</label>
                 <input type="file" id="import-workout-input" accept=".json,application/json" style="display: none;" />
             </div>
-            <p id="import-status" class="status-text" style="text-align: right; margin-top: -0.5rem; margin-bottom: 1rem;"></p>
+            <p id="import-status" class="status-text" style="text-align: right; margin-top: -1rem; margin-bottom: 1rem;"></p>
             <div id="workout-library">
                 <p>No workouts found. Create one with the agent API.</p>
             </div>

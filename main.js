@@ -191,15 +191,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderCard(w, isToday) {
         const duration = formatTime(api.workoutManager.getTotalDuration(w));
+        const svgProfile = generateWorkoutSVG(w);
         return `
             <div class="workout-card glass-panel">
                 <h3>${w.name} ${w.agent ? `<span class="agent-badge">${w.agent}</span>` : ''}</h3>
                 <p>${w.description || ''}</p>
+                <div class="workout-profile-svg">${svgProfile}</div>
                 <div class="meta">
                     <span>${duration} | FTP: ${w.ftp}W</span>
                     <button class="button start-workout-btn" data-id="${w.id}">${isToday ? 'Load & Start' : 'Start'}</button>
                 </div>
             </div>`;
+    }
+
+    function generateWorkoutSVG(workout) {
+        if (!workout || !workout.intervals || workout.intervals.length === 0) return '';
+        const totalDuration = api.workoutManager.getTotalDuration(workout);
+        if (totalDuration === 0) return '';
+        
+        let svg = '<svg viewBox="0 0 100 40" preserveAspectRatio="none" style="width: 100%; height: 60px; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">';
+        let currentX = 0;
+        
+        workout.intervals.forEach(iv => {
+            const width = (iv.duration / totalDuration) * 100;
+            const height = Math.min((iv.percentage / 150) * 40, 40);
+            const y = 40 - height;
+            const zone = PowerZones.getZone(workout.ftp * (iv.percentage / 100), workout.ftp);
+            const color = PowerZones.getZoneColor(zone);
+            
+            svg += `<rect x="${currentX}" y="${y}" width="${width}" height="${height}" fill="${color}" opacity="0.8" />`;
+            currentX += width;
+        });
+        
+        svg += '</svg>';
+        return svg;
     }
 
     function updateRollerDeck(currentIndex) {
