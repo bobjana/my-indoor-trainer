@@ -669,6 +669,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 500);
 
     // Initial setup
+    if (import.meta.env.DEV) {
+        const stubBtn = $('#use-stub-btn');
+        if (stubBtn) stubBtn.style.display = 'inline-block';
+    }
+
     api.tryReconnect().then(connected => {
         if (connected) {
             $('#trainer-status').textContent = `Connected: ${api.ftms.device.name}`;

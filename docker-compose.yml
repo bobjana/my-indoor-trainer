@@ -15,12 +15,3 @@ services:
     environment:
       - PORT=5173
 
-  stub-trainer:
-    build:
-      context: .
-    command: node stub-server/server.js
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
-    stdin_open: true # allows interacting with the stub CLI
-    tty: true

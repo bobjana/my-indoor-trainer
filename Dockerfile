@@ -27,19 +27,15 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prod-server.js ./
-COPY --from=builder /app/stub-server ./stub-server
 COPY --from=builder /app/samples ./samples
 
 # Install only production dependencies
 RUN npm install --omit=dev
 
-# The app also needs ws for the stub server if run in this image
-RUN cd stub-server && npm install --omit=dev
-
 # Create sessions directory
 RUN mkdir -p sessions/completed
 
-EXPOSE 5173 8080
+EXPOSE 5173
 
 # Default command is to run the app server
 CMD ["node", "prod-server.js"]
