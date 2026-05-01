@@ -93,6 +93,27 @@ Workout format:
 └── sessions/           # Completed workout sessions (gitignored)
 ```
 
+## Self-Hosting with Docker
+
+You can run the app and the stub trainer using Docker Compose.
+
+1. (Optional) Create a `.env` file with your Strava credentials:
+   ```
+   VITE_STRAVA_CLIENT_ID=your_id
+   VITE_STRAVA_CLIENT_SECRET=your_secret
+   ```
+2. Build and start the containers:
+   ```bash
+   docker-compose up -d --build
+   ```
+3. Access the app at `http://localhost:5173`. The stub trainer will be available on port `8080`.
+
+To interact with the stub trainer CLI:
+```bash
+docker attach my-indoor-trainer-stub-trainer-1
+```
+(Press `Ctrl+P, Ctrl+Q` to detach without stopping the container)
+
 ## Build
 
 ```bash

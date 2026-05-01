@@ -426,7 +426,8 @@ class TrainerAPI {
             timestamp: Date.now(),
             intervalCount: workout ? workout.intervals.length : 0,
             intervals: workout ? workout.intervals : [],
-            ftp: workout ? workout.ftp : 200
+            ftp: workout ? workout.ftp : 200,
+            metricsHistory: history // Include high-resolution time-series data
         }
     }
 

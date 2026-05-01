@@ -50,13 +50,17 @@ export default function localSessionsPlugin(options = {}) {
 
     function writeSessionFile(data) {
         ensureDir()
+        const completedDir = path.join(sessionsDir, 'completed')
+        if (!fs.existsSync(completedDir)) {
+            fs.mkdirSync(completedDir, { recursive: true })
+        }
         const ts = new Date().toISOString().replace(/[:.]/g, '-')
         const slug = (data.workoutName || data.name || 'workout')
             .replace(/[^a-zA-Z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '')
             .substring(0, 40)
         const filename = `completed-${ts}-${slug}.json`
-        const filePath = path.join(sessionsDir, filename)
+        const filePath = path.join(completedDir, filename)
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
         return { filename, path: filePath }
     }

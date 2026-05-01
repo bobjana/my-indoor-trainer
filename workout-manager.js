@@ -79,7 +79,12 @@ export class WorkoutManager {
      */
     appendSessionHistory(summary) {
         const history = this.getSessionHistory()
-        history.push(summary)
+        
+        // Remove high-res metrics from summary before saving to localStorage to save space
+        const summaryForStorage = { ...summary }
+        delete summaryForStorage.metricsHistory
+
+        history.push(summaryForStorage)
         // Keep last 50 sessions
         if (history.length > 50) history.splice(0, history.length - 50)
         try {
@@ -203,8 +208,13 @@ export class WorkoutManager {
 
     saveLastWorkoutSummary(summary) {
         if (summary == null) return
+        
+        // Remove high-res metrics from summary before saving to localStorage to save space
+        const summaryForStorage = { ...summary }
+        delete summaryForStorage.metricsHistory
+
         try {
-            localStorage.setItem(this.summaryKey, JSON.stringify(summary))
+            localStorage.setItem(this.summaryKey, JSON.stringify(summaryForStorage))
         } catch (e) {
             console.error('Failed to save workout summary:', e)
         }
