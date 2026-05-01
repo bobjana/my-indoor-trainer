@@ -41,7 +41,7 @@ export class FTMSController {
     // Try to reconnect to last device
     async reconnectToLastDevice() {
         const lastDevice = this.getLastDevice();
-        if (!lastDevice) {
+        if (!lastDevice || !navigator.bluetooth || !navigator.bluetooth.getDevices) {
             return false;
         }
 
@@ -248,281 +248,160 @@ export class FTMSController {
     }
 
     async subscribeToMetrics() {
-        // Try to subscribe to FTMS Indoor Bike Data first (most common for cadence)
-        try {
-            const ftmsService = await this.server.getPrimaryService(this.FITNESS_MACHINE_SERVICE);
-            const indoorBikeChar = await ftmsService.getCharacteristic(0x2AD2); // Indoor Bike Data
+        this.log('Discovering services...', 'info');
+        const services = await this.server.getPrimaryServices();
+        this.log(`Found ${services.length} services`, 'info');
 
-            indoorBikeChar.addEventListener('characteristicvaluechanged', (e) => {
-                try {
-                    const dv = new DataView(e.target.value.buffer);
-                    const flags = dv.getUint16(0, true);
+        const serviceMap = {};
+        for (const s of services) {
+            // Handle both 16-bit and 128-bit UUIDs
+            const uuid = s.uuid.length <= 8 ? parseInt(s.uuid, 16) : s.uuid;
+            serviceMap[uuid] = s;
+            // Also map by full string for reliability
+            serviceMap[s.uuid] = s;
+        }
 
-                    let offset = 2;
-
-                    // Instantaneous Speed Present (bit 0 = 0 means speed IS present, inverted logic!)
-                    if (!(flags & 0x01)) {
-                        offset += 2; // Skip speed
-                    }
-
-                    // Average Speed Present (bit 1)
-                    if (flags & 0x02) {
-                        offset += 2; // Skip average speed
-                    }
-
-                    // Instantaneous Cadence Present (bit 2)
-                    if (flags & 0x04) {
-                        const cadence = dv.getUint16(offset, true);
-                        this.metrics.cadence = cadence;
-                        offset += 2;
-                    }
-
-                    // Average Cadence Present (bit 3)
-                    if (flags & 0x08) {
-                        offset += 2;
-                    }
-
-                    // Total Distance Present (bit 4)
-                    if (flags & 0x10) {
-                        offset += 3; // 24-bit field
-                    }
-
-                    // Resistance Level Present (bit 5)
-                    if (flags & 0x20) {
-                        offset += 2; // Skip resistance
-                    }
-
-                    // Instantaneous Power Present (bit 6)
-                    if (flags & 0x40) {
-                        const power = dv.getInt16(offset, true);
-                        // Use Indoor Bike Data power as primary source
-                        this.metrics.power = power;
-                        offset += 2;
-                    }
-
-                    // Average Power Present (bit 7)
-                    if (flags & 0x80) {
-                        offset += 2;
-                    }
-
-                    // Extended Energy fields (bits 8-11)
-                    if (flags & 0x100) { // Total Energy
-                        offset += 2;
-                    }
-                    if (flags & 0x200) { // Energy Per Hour
-                        offset += 2;
-                    }
-                    if (flags & 0x400) { // Energy Per Minute
-                        offset += 1;
-                    }
-                    if (flags & 0x800) { // Heart Rate
-                        const hr = dv.getUint8(offset);
-                        if (hr > 0) {
-                            this.metrics.hr = hr;
+        // 1. FTMS Indoor Bike Data
+        const ftmsService = serviceMap[this.FITNESS_MACHINE_SERVICE] || serviceMap['00001826-0000-1000-8000-00805f9b34fb'];
+        if (ftmsService) {
+            try {
+                const indoorBikeChar = await ftmsService.getCharacteristic(0x2AD2);
+                indoorBikeChar.addEventListener('characteristicvaluechanged', (e) => {
+                    try {
+                        const dv = new DataView(e.target.value.buffer);
+                        const flags = dv.getUint16(0, true);
+                        let offset = 2;
+                        if (!(flags & 0x01)) offset += 2;
+                        if (flags & 0x02) offset += 2;
+                        if (flags & 0x04) {
+                            const cadence = dv.getUint16(offset, true);
+                            this.metrics.cadence = cadence;
+                            offset += 2;
                         }
-                        offset += 1;
-                    }
-
-                    this.metrics.timestamp = Date.now();
-                    if (this.onMetricsUpdate) this.onMetricsUpdate(this.metrics);
-                } catch (err) {
-                    console.error('Indoor Bike Data parse error:', err);
-                }
-            });
-
-            await indoorBikeChar.startNotifications();
-            this.log('Subscribed to Indoor Bike Data (cadence, power)', 'success');
-        } catch (e) {
-            this.log(`Indoor Bike Data: ${e.message}`, 'warning');
-        }
-
-        // Subscribe to Cycling Speed and Cadence Service (for cadence)
-        try {
-            this.log('Attempting to connect to CSC Service...', 'info');
-            const cscService = await this.server.getPrimaryService(this.CYCLING_SPEED_CADENCE_SERVICE);
-            this.log('Found CSC Service, getting characteristic...', 'info');
-            const cscChar = await cscService.getCharacteristic(0x2A5B); // CSC Measurement
-            this.log('Found CSC Measurement characteristic', 'info');
-
-            cscChar.addEventListener('characteristicvaluechanged', (e) => {
-                try {
-                    const dv = new DataView(e.target.value.buffer);
-                    const flags = dv.getUint8(0);
-
-                    const bytes = new Uint8Array(e.target.value.buffer);
-                    const hexDump = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                    console.log('CSC Measurement:', hexDump, 'flags:', '0x' + flags.toString(16).padStart(2, '0'));
-
-                    let offset = 1;
-
-                    // Wheel Revolution Data Present (bit 0)
-                    if (flags & 0x01) {
-                        offset += 6; // Skip wheel data (4 bytes revs + 2 bytes time)
-                    }
-
-                    // Crank Revolution Data Present (bit 1)
-                    if (flags & 0x02) {
-                        const cumulativeCrankRevs = dv.getUint16(offset, true);
-                        const lastCrankEventTime = dv.getUint16(offset + 2, true); // in 1/1024 seconds
-
-                        console.log('CSC Crank revs:', cumulativeCrankRevs, 'time:', lastCrankEventTime);
-
-                        // Calculate cadence from deltas
-                        if (this.lastCSCCrankRevs !== undefined && this.lastCSCCrankTime !== undefined) {
-                            const revDelta = (cumulativeCrankRevs - this.lastCSCCrankRevs) & 0xFFFF;
-                            const timeDelta = ((lastCrankEventTime - this.lastCSCCrankTime) & 0xFFFF) / 1024.0;
-
-                            console.log('CSC Delta revs:', revDelta, 'delta time:', timeDelta.toFixed(3), 's');
-
-                            if (timeDelta > 0 && revDelta > 0 && revDelta < 20) {
-                                const cadence = Math.round((revDelta / timeDelta) * 60); // RPM
-                                // Only update if we're the primary cadence source (first one wins)
-                                if (!this.cadenceSource || this.cadenceSource === 'csc') {
-                                    this.cadenceSource = 'csc';
-                                    this.metrics.cadence = cadence;
-                                }
-                                console.log('Cadence from CSC:', cadence, 'RPM');
-
-                                // Store last valid cadence and timestamp for timeout detection
-                                this.lastValidCadence = cadence;
-                                this.lastValidCadenceTime = Date.now();
-                            } else if (timeDelta === 0 && revDelta === 0) {
-                                // Duplicate packet - keep current cadence but check for timeout
-                                if (this.lastValidCadenceTime && (Date.now() - this.lastValidCadenceTime) > 2000) {
-                                    // No new data for 2 seconds, user stopped pedaling
-                                    this.metrics.cadence = 0;
-                                }
-                                // Otherwise keep the last valid cadence
-                            }
+                        if (flags & 0x08) offset += 2;
+                        if (flags & 0x10) offset += 3;
+                        if (flags & 0x20) offset += 2;
+                        if (flags & 0x40) {
+                            this.metrics.power = dv.getInt16(offset, true);
+                            offset += 2;
                         }
-
-                        this.lastCSCCrankRevs = cumulativeCrankRevs;
-                        this.lastCSCCrankTime = lastCrankEventTime;
-                    }
-
-                    this.metrics.timestamp = Date.now();
-                    if (this.onMetricsUpdate) this.onMetricsUpdate(this.metrics);
-                } catch (err) {
-                    console.error('CSC Measurement parse error:', err);
-                }
-            });
-
-            await cscChar.startNotifications();
-            this.log('Subscribed to Cycling Speed and Cadence (cadence)', 'success');
-        } catch (e) {
-            this.log(`Cycling Speed and Cadence: ${e.message}`, 'warning');
+                        if (flags & 0x80) offset += 2;
+                        if (flags & 0x100) offset += 2;
+                        if (flags & 0x200) offset += 2;
+                        if (flags & 0x400) offset += 1;
+                        if (flags & 0x800) {
+                            const hr = dv.getUint8(offset);
+                            if (hr > 0) this.metrics.hr = hr;
+                            offset += 1;
+                        }
+                        this.metrics.timestamp = Date.now();
+                        if (this.onMetricsUpdate) this.onMetricsUpdate(this.metrics);
+                    } catch (err) { console.error('FTMS parse error:', err); }
+                });
+                await indoorBikeChar.startNotifications();
+                this.log('Subscribed to Indoor Bike Data', 'success');
+            } catch (e) { this.log(`FTMS char error: ${e.message}`, 'warning'); }
         }
 
-        // Subscribe to Heart Rate
-        try {
-            const hrService = await this.server.getPrimaryService(this.HEART_RATE_SERVICE);
-            const hrChar = await hrService.getCharacteristic(0x2a37);
-            hrChar.addEventListener('characteristicvaluechanged', (e) => {
-                const flags = e.target.value.getUint8(0);
-                this.metrics.hr = flags & 0x01 ? e.target.value.getUint16(1, true) : e.target.value.getUint8(1);
-                this.metrics.timestamp = Date.now();
-                if (this.onMetricsUpdate) this.onMetricsUpdate(this.metrics);
-            });
-            await hrChar.startNotifications();
-            this.hasTrainerHR = true;
-            this.log('Subscribed to Heart Rate', 'success');
-        } catch (e) {
-            this.hasTrainerHR = false;
-            this.log(`Heart Rate: ${e.message}`, 'warning');
-        }
-
-        // Also try Cycling Power Service as fallback (for cadence from crank revolutions)
-        try {
-            const cpService = await this.server.getPrimaryService(this.CYCLING_POWER_SERVICE);
-            const cpChar = await cpService.getCharacteristic(0x2a63);
-            cpChar.addEventListener('characteristicvaluechanged', (e) => {
-                try {
-                    const dv = new DataView(e.target.value.buffer);
-                    const flags = dv.getUint16(0, true);
-
-                    // Debug: log raw bytes (uncomment for debugging)
-                    // const bytes = new Uint8Array(e.target.value.buffer);
-                    // const hexDump = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                    // console.log('Cycling Power raw:', hexDump, 'flags:', '0x' + flags.toString(16).padStart(4, '0'), 'len:', bytes.length);
-
-                    // Power is always at offset 2
-                    const power = dv.getInt16(2, true);
-                    // console.log('Power from Cycling Power Service at offset 2:', power, 'W');
-
-                    // Only use Cycling Power if valid (non-zero), otherwise keep Indoor Bike Data power
-                    if (power > 0) {
-                        this.metrics.power = power;
-                    }
-
-                    // Calculate offset for optional fields (same approach as debug.html)
-                    let offset = 4; // Start after flags (2) + power (2)
-
-                    // Skip Pedal Power Balance (bit 0 = 0x01)
-                    if (flags & 0x01) {
-                        offset += 1;
-                    }
-
-                    // Skip Accumulated Torque (bit 2 = 0x04)
-                    if (flags & 0x04) {
-                        offset += 2;
-                    }
-
-                    // Skip Wheel Revolution Data (bit 4 = 0x10)
-                    if (flags & 0x10) {
-                        offset += 6; // 4 bytes wheel revs + 2 bytes wheel time
-                    }
-
-                    // Crank Revolution Data (bit 5 = 0x20)
-                    if (flags & 0x20) {
-                        // Standard spec: 16-bit crank revs + 16-bit time
-                        const cumulativeCrankRevs = dv.getUint16(offset, true);
-                        const lastCrankEventTime = dv.getUint16(offset + 2, true); // in 1/1024 seconds
-
-                        // Calculate cadence from deltas (if we have previous values)
-                        if (this.lastCrankRevs !== undefined && this.lastCrankTime !== undefined) {
-                            // Handle 16-bit wrap-around
-                            const revDelta = (cumulativeCrankRevs - this.lastCrankRevs) & 0xFFFF;
-                            const timeDelta = ((lastCrankEventTime - this.lastCrankTime) & 0xFFFF) / 1024.0; // seconds
-
-                            // console.log('CP Crank data - revs:', cumulativeCrankRevs, 'time:', lastCrankEventTime,
-                            //             'delta revs:', revDelta, 'delta time:', timeDelta.toFixed(3), 's');
-
-                            if (timeDelta > 0 && revDelta > 0 && revDelta < 20) {
-                                const cadence = Math.round((revDelta / timeDelta) * 60); // RPM
-                                // Only use power service cadence if CSC isn't providing it (CSC is preferred)
-                                if (this.cadenceSource !== 'csc') {
-                                    this.cadenceSource = 'power';
-                                    this.metrics.cadence = cadence;
-                                }
-                                // console.log('Cadence from Cycling Power:', cadence, 'RPM');
-
-                                this.lastValidCadence = cadence;
-                                this.lastValidCadenceTime = Date.now();
-                            } else if (timeDelta === 0 && revDelta === 0) {
-                                // Duplicate - keep cadence but check timeout
-                                if (this.lastValidCadenceTime && (Date.now() - this.lastValidCadenceTime) > 2000) {
-                                    this.metrics.cadence = 0;
+        // 2. Cycling Speed and Cadence (CSC)
+        const cscService = serviceMap[this.CYCLING_SPEED_CADENCE_SERVICE] || serviceMap['00001816-0000-1000-8000-00805f9b34fb'];
+        if (cscService) {
+            try {
+                const cscChar = await cscService.getCharacteristic(0x2A5B);
+                cscChar.addEventListener('characteristicvaluechanged', (e) => {
+                    try {
+                        const dv = new DataView(e.target.value.buffer);
+                        const flags = dv.getUint8(0);
+                        let offset = 1;
+                        if (flags & 0x01) offset += 6;
+                        if (flags & 0x02) {
+                            const cumulativeCrankRevs = dv.getUint16(offset, true);
+                            const lastCrankEventTime = dv.getUint16(offset + 2, true);
+                            if (this.lastCSCCrankRevs !== undefined && this.lastCSCCrankTime !== undefined) {
+                                const revDelta = (cumulativeCrankRevs - this.lastCSCCrankRevs) & 0xFFFF;
+                                const timeDelta = ((lastCrankEventTime - this.lastCSCCrankTime) & 0xFFFF) / 1024.0;
+                                if (timeDelta > 0 && revDelta > 0 && revDelta < 20) {
+                                    const cadence = Math.round((revDelta / timeDelta) * 60);
+                                    if (!this.cadenceSource || this.cadenceSource === 'csc') {
+                                        this.cadenceSource = 'csc';
+                                        this.metrics.cadence = cadence;
+                                    }
+                                    this.lastValidCadenceTime = Date.now();
+                                } else if (timeDelta === 0 && revDelta === 0) {
+                                    if (this.lastValidCadenceTime && (Date.now() - this.lastValidCadenceTime) > 2000) this.metrics.cadence = 0;
                                 }
                             }
+                            this.lastCSCCrankRevs = cumulativeCrankRevs;
+                            this.lastCSCCrankTime = lastCrankEventTime;
                         }
+                        this.metrics.timestamp = Date.now();
+                        if (this.onMetricsUpdate) this.onMetricsUpdate(this.metrics);
+                    } catch (err) { console.error('CSC parse error:', err); }
+                });
+                await cscChar.startNotifications();
+                this.log('Subscribed to CSC', 'success');
+            } catch (e) { this.log(`CSC char error: ${e.message}`, 'warning'); }
+        }
 
-                        this.lastCrankRevs = cumulativeCrankRevs;
-                        this.lastCrankTime = lastCrankEventTime;
-
-                        offset += 4; // Skip past crank data (2 bytes revs + 2 bytes time)
-                    }
-                    // Note: If no crank data in Cycling Power, Indoor Bike Data will provide cadence
-
+        // 3. Heart Rate
+        const hrService = serviceMap[this.HEART_RATE_SERVICE] || serviceMap['0000180d-0000-1000-8000-00805f9b34fb'];
+        if (hrService) {
+            try {
+                const hrChar = await hrService.getCharacteristic(0x2a37);
+                hrChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const flags = e.target.value.getUint8(0);
+                    this.metrics.hr = flags & 0x01 ? e.target.value.getUint16(1, true) : e.target.value.getUint8(1);
                     this.metrics.timestamp = Date.now();
                     if (this.onMetricsUpdate) this.onMetricsUpdate(this.metrics);
-                } catch (err) {
-                    console.error('Power measurement parse error:', err);
-                }
-            });
-            await cpChar.startNotifications();
-            this.log('Subscribed to Cycling Power Service', 'success');
-        } catch (e) {
-            this.log(`Cycling Power Service: ${e.message}`, 'warning');
+                });
+                await hrChar.startNotifications();
+                this.hasTrainerHR = true;
+                this.log('Subscribed to Heart Rate', 'success');
+            } catch (e) { this.log(`HR char error: ${e.message}`, 'warning'); }
+        }
+
+        // 4. Cycling Power
+        const cpService = serviceMap[this.CYCLING_POWER_SERVICE] || serviceMap['00001818-0000-1000-8000-00805f9b34fb'];
+        if (cpService) {
+            try {
+                const cpChar = await cpService.getCharacteristic(0x2a63);
+                cpChar.addEventListener('characteristicvaluechanged', (e) => {
+                    try {
+                        const dv = new DataView(e.target.value.buffer);
+                        const flags = dv.getUint16(0, true);
+                        const power = dv.getInt16(2, true);
+                        if (power > 0) this.metrics.power = power;
+                        let offset = 4;
+                        if (flags & 0x01) offset += 1;
+                        if (flags & 0x04) offset += 2;
+                        if (flags & 0x10) offset += 6;
+                        if (flags & 0x20) {
+                            const cumulativeCrankRevs = dv.getUint16(offset, true);
+                            const lastCrankEventTime = dv.getUint16(offset + 2, true);
+                            if (this.lastCrankRevs !== undefined && this.lastCrankTime !== undefined) {
+                                const revDelta = (cumulativeCrankRevs - this.lastCrankRevs) & 0xFFFF;
+                                const timeDelta = ((lastCrankEventTime - this.lastCrankTime) & 0xFFFF) / 1024.0;
+                                if (timeDelta > 0 && revDelta > 0 && revDelta < 20) {
+                                    const cadence = Math.round((revDelta / timeDelta) * 60);
+                                    if (this.cadenceSource !== 'csc') {
+                                        this.cadenceSource = 'power';
+                                        this.metrics.cadence = cadence;
+                                    }
+                                    this.lastValidCadenceTime = Date.now();
+                                } else if (timeDelta === 0 && revDelta === 0) {
+                                    if (this.lastValidCadenceTime && (Date.now() - this.lastValidCadenceTime) > 2000) this.metrics.cadence = 0;
+                                }
+                            }
+                            this.lastCrankRevs = cumulativeCrankRevs;
+                            this.lastCrankTime = lastCrankEventTime;
+                        }
+                        this.metrics.timestamp = Date.now();
+                        if (this.onMetricsUpdate) this.onMetricsUpdate(this.metrics);
+                    } catch (err) { console.error('Power parse error:', err); }
+                });
+                await cpChar.startNotifications();
+                this.log('Subscribed to Cycling Power', 'success');
+            } catch (e) { this.log(`Power char error: ${e.message}`, 'warning'); }
         }
     }
 
