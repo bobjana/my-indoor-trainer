@@ -272,8 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.classList.add('current');
             } else if (idx === currentIndex - 1) {
                 el.classList.add('prev');
-            } else if (idx === currentIndex + 1) {
-                el.classList.add('next');
             }
         });
     }

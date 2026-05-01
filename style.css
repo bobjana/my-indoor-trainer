@@ -560,8 +560,7 @@ html, body {
 }
 
 .roller-item.prev,
-.roller-item.current,
-.roller-item.next {
+.roller-item.current {
     display: flex;
 }
 
@@ -575,11 +574,6 @@ html, body {
     transform: translateY(0);
     border-left: 4px solid var(--power-color);
     padding-left: 15px;
-}
-
-.roller-item.next {
-    opacity: 0.4;
-    transform: translateY(0);
 }
 
 .roller-name {
@@ -602,13 +596,11 @@ html, body {
     margin-top: 4px;
 }
 
-.roller-item.prev .roller-name,
-.roller-item.next .roller-name {
+.roller-item.prev .roller-name {
     font-size: 1.2rem;
 }
 
-.roller-item.prev .roller-time,
-.roller-item.next .roller-time {
+.roller-item.prev .roller-time {
     font-size: 1rem;
 }
 
@@ -662,6 +654,13 @@ html, body {
     max-width: 700px;
     width: 90%;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
 }
 
 .button-icon {
@@ -737,6 +736,33 @@ html, body {
     #session-description-display { font-size: 0.85rem; }
     #ftp-control { padding: 0.2rem 0.5rem; font-size: 0.9rem; gap: 5px; }
     .ftp-btn { width: 22px; height: 22px; font-size: 1rem; }
+
+    #metrics-group {
+        padding-top: 3rem;
+    }
+
+    .exit-button-container {
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    #exit-workout-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+    }
+
+    .modal-content {
+        padding: 2.5rem 1.5rem;
+    }
+
+    .modal-close-btn {
+        top: 1rem;
+        right: 1rem;
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
 }
 
 @media (max-height: 820px) {
