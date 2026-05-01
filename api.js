@@ -164,6 +164,28 @@ class TrainerAPI {
         return this.workoutManager.getTodaysWorkout()
     }
 
+    adjustFTP(delta) {
+        if (!this.state.activeWorkout) return;
+        
+        this.state.activeWorkout.ftp = Math.max(50, this.state.activeWorkout.ftp + delta);
+        
+        // Immediately update trainer target power
+        const intervals = this.state.activeWorkout.intervals;
+        const interval = intervals[this.state.currentIntervalIndex];
+        if (interval) {
+            const targetPower = TrainerAPI.calcTargetPower(this.state.activeWorkout.ftp, interval);
+            this.ftms.setTargetPower(targetPower);
+            
+            this._emit('intervalchange', {
+                index: this.state.currentIntervalIndex,
+                interval,
+                targetPower
+            });
+        }
+        
+        this._emit('ftpupdated', this.state.activeWorkout.ftp);
+    }
+
     async startWorkout(workoutId) {
         const workout = this.workoutManager.getWorkout(workoutId)
         if (!workout) return false

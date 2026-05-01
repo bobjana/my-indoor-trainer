@@ -237,30 +237,34 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize rollerdeck if empty
         if (roller.children.length === 0) {
             intervals.forEach((iv, idx) => {
-                const targetPower = Math.round(ftp * iv.percentage / 100);
-                let name = iv.name;
-                if (!name) {
-                    const zone = PowerZones.getZone(targetPower, ftp);
-                    name = zone <= 1 ? 'Warmup' : zone === 2 ? 'Interval' : zone >= 3 ? 'Hard' : 'Unknown';
-                }
-                
                 const el = document.createElement('div');
                 el.className = 'roller-item';
                 el.id = `roller-item-${idx}`;
-                
-                el.innerHTML = `
-                    <div class="roller-name">${name} - ${targetPower} W</div>
-                    <div class="roller-time" id="time-display-${idx}">${formatTime(iv.duration)}</div>
-                `;
-                
                 roller.appendChild(el);
             });
         }
         
-        // Update classes based on current index to create rolling effect
-        intervals.forEach((_, idx) => {
+        // Update classes and content
+        intervals.forEach((iv, idx) => {
             const el = document.getElementById(`roller-item-${idx}`);
             if (!el) return;
+            
+            const targetPower = Math.round(ftp * iv.percentage / 100);
+            let name = iv.name;
+            if (!name) {
+                const zone = PowerZones.getZone(targetPower, ftp);
+                name = zone <= 1 ? 'Warmup' : zone === 2 ? 'Interval' : zone >= 3 ? 'Hard' : 'Unknown';
+            }
+
+            // Only update innerHTML if it's different to avoid layout thrashing
+            const nameHtml = `<div class="roller-name">${name} - ${targetPower} W</div>`;
+            const currentContent = el.querySelector('.roller-name');
+            if (!currentContent || currentContent.outerHTML !== nameHtml) {
+                el.innerHTML = `
+                    ${nameHtml}
+                    <div class="roller-time" id="time-display-${idx}">${el.querySelector('.roller-time')?.textContent || formatTime(iv.duration)}</div>
+                `;
+            }
             
             el.className = 'roller-item'; // Reset classes
             
@@ -295,8 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="segment-label">Z${zone} (${label})</span>
                 </div>`;
         }).join('');
-        // Restore the cursor that was overwritten by innerHTML
-        bar.insertAdjacentHTML('beforeend', '<div class="diagram-cursor"></div>');
     }
 
     function updateDiagram(progressPercentage) {
@@ -527,8 +529,36 @@ document.addEventListener('DOMContentLoaded', () => {
     api.on('workoutstart', (w) => {
         workoutCompletedNaturally = false;
         $('#interval-roller').innerHTML = ''; // Clear rollerdeck on start
+        
+        // Update session info
+        const nameEl = $('#session-name-display');
+        const descEl = $('#session-description-display');
+        const ftpEl = $('#current-ftp-display');
+        if (nameEl) nameEl.textContent = w.name || 'Untitled Workout';
+        if (descEl) descEl.textContent = w.description || 'No description available.';
+        if (ftpEl) ftpEl.textContent = w.ftp;
+        
         renderDiagram(w);
         showScreen('workout');
+    });
+
+    api.on('ftpupdated', (newFtp) => {
+        const ftpEl = $('#current-ftp-display');
+        if (ftpEl) ftpEl.textContent = newFtp;
+        
+        // Re-render things that depend on FTP if necessary
+        if (api.state.activeWorkout) {
+            renderDiagram(api.state.activeWorkout);
+            // Rollerdeck items are updated by intervalchange event which adjustFTP also emits
+        }
+    });
+
+    $('#ftp-up-btn').addEventListener('click', () => {
+        api.adjustFTP(5);
+    });
+
+    $('#ftp-down-btn').addEventListener('click', () => {
+        api.adjustFTP(-5);
     });
 
     api.on('workoutcomplete', () => {
