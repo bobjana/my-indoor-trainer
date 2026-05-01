@@ -403,7 +403,7 @@ html, body {
     left: 0;
     bottom: 60px; /* Align with bottom of blocks */
     width: 4px;
-    height: 300px; /* Specific height to go above bars */
+    height: calc(100% - 60px); /* Scale with the blocks panel */
     background: #00d2ff;
     box-shadow: 0 0 15px #00d2ff, 0 0 30px rgba(0, 210, 255, 0.6);
     z-index: 100;

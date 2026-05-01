@@ -4,7 +4,7 @@ export class WorkoutManager {
         this.summaryKey = 'indoor-trainer-last-summary'
         this.historyKey = 'indoor-trainer-session-history'
         this.settingsKey = 'indoor-trainer-settings'
-        this.workouts = this._loadWorkouts()
+        this.workouts = [] // Always load from disk, not localStorage
         this.onUpdate = null
         this._diskReady = false
     }
@@ -33,7 +33,7 @@ export class WorkoutManager {
                 const existing = this.workouts.find(w => w.id === data.id)
                 if (existing) continue
 
-                const result = this.createWorkout(data)
+                const result = this.createWorkout(data, true)
                 if (result.success) added++
             }
 
@@ -98,7 +98,7 @@ export class WorkoutManager {
         }
     }
 
-    createWorkout(json) {
+    createWorkout(json, skipDiskSave = false) {
         if (json == null || typeof json !== 'object') {
             return { success: false, id: null, errors: ['Workout must be a valid object'] }
         }
@@ -136,6 +136,10 @@ export class WorkoutManager {
             this.workouts[existingIndex] = workout
         } else {
             this.workouts.push(workout)
+        }
+
+        if (!skipDiskSave) {
+            this.saveSessionToDisk(workout).catch(err => console.error('Failed to save to disk', err))
         }
 
         this._saveWorkouts()
@@ -292,15 +296,6 @@ export class WorkoutManager {
     }
 
     _loadWorkouts() {
-        try {
-            const saved = localStorage.getItem(this.storageKey)
-            if (saved) {
-                const parsed = JSON.parse(saved)
-                if (Array.isArray(parsed)) return parsed
-            }
-        } catch (e) {
-            console.error('Failed to load workouts:', e)
-        }
         return []
     }
 
